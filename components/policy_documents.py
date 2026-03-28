@@ -50,23 +50,44 @@ class PolicyDocumentsComponent(BaseComponent):
 
         display_df = df[available_cols].rename(columns=col_map)
 
+        # ── metrics ─────────────────────────────────────────────────────────
+        total = len(df)
+        n_countries = df["publisher_org.country_name"].nunique() if "publisher_org.country_name" in df.columns else None
+        n_publishers = df["publisher_org.name"].nunique() if "publisher_org.name" in df.columns else None
+        year_range = None
+        if "year" in df.columns:
+            years = df["year"].dropna()
+            if not years.empty:
+                year_range = f"{int(years.min())}–{int(years.max())}"
+
+        cols = st.columns(4)
+        cols[0].metric("Policy Documents", total)
+        if n_countries is not None:
+            cols[1].metric("Countries", n_countries)
+        if n_publishers is not None:
+            cols[2].metric("Publishers", n_publishers)
+        if year_range:
+            cols[3].metric("Year Range", year_range)
+
         # Sort by year descending
         if "Year" in display_df.columns:
             display_df = display_df.sort_values("Year", ascending=False, na_position="last")
 
-        # Make Link column clickable
+
+        column_config = {
+            "Title": st.column_config.TextColumn("Title", width="large"),
+            "Publisher": st.column_config.TextColumn("Publisher", width="medium"),
+            "Country": st.column_config.TextColumn("Country", width="small"),
+            "Year": st.column_config.NumberColumn("Year", width="small"),
+        }
         if "Link" in display_df.columns:
-            display_df["Link"] = display_df["Link"].apply(
-                lambda url: f"[Open]({url})" if pd.notna(url) and url else ""
-            )
+            column_config["Link"] = st.column_config.LinkColumn("Link", display_text="Open", width="small")
 
         st.dataframe(
             display_df,
             use_container_width=True,
             hide_index=True,
-            column_config={
-                "Link": st.column_config.LinkColumn("Link", display_text="Open"),
-            } if "Link" in display_df.columns else None,
+            column_config=column_config,
         )
 
         st.caption(f"Total: {len(display_df)} policy document(s) found.")

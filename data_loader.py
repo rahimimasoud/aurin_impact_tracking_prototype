@@ -155,7 +155,7 @@ def _load_dimensions_data(api_key: str, endpoint: str, query: str, from_date: Op
 
 
 _POLICY_QUERY = """
-    search policy_documents for "\\"Australian Urban Research Infrastructure Network\\" OR \\"AURIN\\""
+    search policy_documents for "\\"Australian Urban Research Infrastructure Network\\" OR \\"Australia's Spatial Intelligence Network\\""
     return policy_documents[id+title+year+linkout+publisher_org+publisher_org_country+publisher_org_city]
 """
 
