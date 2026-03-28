@@ -39,6 +39,16 @@ class SidebarComponent(BaseComponent):
         st.sidebar.header("🔧 Configuration")    
         # Date range filters
         
+        st.sidebar.subheader("🔑 Credentials")
+        # API Key input
+        api_key_input = st.sidebar.text_input(
+            "API Key",
+            type="password",
+            help="Enter your API key to access the data",
+            placeholder="Enter your API key here...",
+            value=st.session_state.get('api_key_input', '')
+        )
+
         st.sidebar.subheader("📅 Date Range Filter")
         st.sidebar.info("Filter publications by publication date range (optional)")
         
@@ -61,16 +71,7 @@ class SidebarComponent(BaseComponent):
             st.session_state.from_date = from_date
             st.session_state.to_date = to_date
         
-        st.sidebar.markdown("---")
-        
-        # API Key input
-        api_key_input = st.sidebar.text_input(
-            "Dimensions API Key",
-            type="password",
-            help="Enter your Dimensions API key to access the data",
-            placeholder="Enter your API key here...",
-            value=st.session_state.get('api_key_input', '')
-        )
+        # st.sidebar.markdown("---")        
         
         # Button row for API key actions
         with st.sidebar:

@@ -154,6 +154,53 @@ def _load_dimensions_data(api_key: str, endpoint: str, query: str, from_date: Op
         return None, None, None, None, None
 
 
+_POLICY_QUERY = """
+    search policy_documents for "\\"Australian Urban Research Infrastructure Network\\" OR \\"Australia's Spatial Intelligence Network\\""
+    return policy_documents[id+title+year+linkout+publisher_org+publisher_org_country+publisher_org_city]
+"""
+
+
+@st.cache_data
+def _load_policy_documents(api_key: str, endpoint: str) -> Optional[pd.DataFrame]:
+    """
+    Cached function to load AURIN-related policy documents from Dimensions API.
+
+    Args:
+        api_key: Dimensions API key
+        endpoint: Dimensions API endpoint
+
+    Returns:
+        DataFrame of policy documents or None on failure
+    """
+    try:
+        if not _validate_api_key(api_key):
+            return None
+
+        dimcli.login(key=api_key, endpoint=endpoint)
+        dsl = dimcli.Dsl()
+        res = dsl.query_iterative(_POLICY_QUERY)
+        df = res.as_dataframe()
+        return df if df is not None and not df.empty else pd.DataFrame()
+
+    except Exception as e:
+        error_msg = str(e)
+        if "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower():
+            st.error("❌ Authentication failed when loading policy documents.")
+        else:
+            st.error(f"❌ Error loading policy documents: {error_msg}")
+        return None
+
+
+class PolicyDocumentsDataLoader:
+    """Loader for AURIN-relevant policy documents from Dimensions API."""
+
+    def __init__(self, endpoint: str = "https://app.dimensions.ai"):
+        self.endpoint = endpoint
+
+    def load_data(self, api_key: str) -> Optional[pd.DataFrame]:
+        return _load_policy_documents(api_key, self.endpoint)
+
+
 class DimensionsDataLoader(BaseDataLoader):
     """Concrete implementation of data loader for Dimensions API."""
     
