@@ -34,12 +34,9 @@ class SidebarComponent(BaseComponent):
         """Render the sidebar component."""
         # Add AURIN logo at the top
         self._render_logo()
-        st.sidebar.info("This dashboard displays AURIN research impact metrics and analytics.")
-        
-        st.sidebar.header("🔧 Configuration")    
-        # Date range filters
-        
-        st.sidebar.subheader("🔑 Credentials")
+        st.sidebar.info("This dashboard displays AURIN research impact, metrics and analytics.")
+                
+        st.sidebar.subheader("🔑 Enter Your Credentials")
         # API Key input
         api_key_input = st.sidebar.text_input(
             "API Key",
@@ -48,31 +45,30 @@ class SidebarComponent(BaseComponent):
             placeholder="Enter your API key here...",
             value=st.session_state.get('api_key_input', '')
         )
+                
+        with st.sidebar.expander("📅 Date Range Filter"):
+            st.info("Filter reports by date range (optional)")
 
-        st.sidebar.subheader("📅 Date Range Filter")
-        st.sidebar.info("Filter publications by publication date range (optional)")
+            from_date = st.date_input(
+                "From Date",
+                value=st.session_state.get('from_date'),
+                help="Select the start date for filtering publications"
+            )
+
+            to_date = st.date_input(
+                "To Date",
+                value=st.session_state.get('to_date'),
+                help="Select the end date for filtering publications"
+            )
+
+            # Validate date range
+            if from_date and to_date and from_date > to_date:
+                st.error("❌ From date must be before To date")
+            else:
+                st.session_state.from_date = from_date
+                st.session_state.to_date = to_date
         
-        from_date = st.sidebar.date_input(
-            "From Date",
-            value=st.session_state.get('from_date'),
-            help="Select the start date for filtering publications"
-        )
-        
-        to_date = st.sidebar.date_input(
-            "To Date",
-            value=st.session_state.get('to_date'),
-            help="Select the end date for filtering publications"
-        )
-        
-        # Validate date range
-        if from_date and to_date and from_date > to_date:
-            st.sidebar.error("❌ From date must be before To date")
-        else:
-            st.session_state.from_date = from_date
-            st.session_state.to_date = to_date
-        
-        # st.sidebar.markdown("---")        
-        
+       
         # Button row for API key actions
         with st.sidebar:
             submit_key = st.button("🔑 Submit Key", type="primary", use_container_width=True)

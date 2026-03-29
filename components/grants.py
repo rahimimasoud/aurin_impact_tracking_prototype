@@ -15,7 +15,7 @@ class GrantsComponent(BaseComponent):
     def render(self) -> None:
         """Render the grants component."""
         st.markdown(
-            '<div class="section-header">💰 Grants Including AURIN</div>',
+            '<div class="section-header">💰 Grants Enabling AURIN</div>',
             unsafe_allow_html=True,
         )
         st.caption(
@@ -42,8 +42,6 @@ class GrantsComponent(BaseComponent):
             col_map["funding_org_name"] = "Funder"
         if "funding_usd" in df.columns:
             col_map["funding_usd"] = "Funding (USD)"
-        if "funder_countries" in df.columns:
-            col_map["funder_countries"] = "Funder Country"
         if "linkout" in df.columns:
             col_map["linkout"] = "Link"
 

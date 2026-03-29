@@ -40,8 +40,8 @@ class PatentsComponent(BaseComponent):
             col_map["filing_date"] = "Filing Date"
         if "assignees" in df.columns:
             col_map["assignees"] = "Assignees"
-        if "inventors" in df.columns:
-            col_map["inventors"] = "Inventors"
+        if "inventor_names" in df.columns:
+            col_map["inventor_names"] = "Inventors"
         if "jurisdiction" in df.columns:
             col_map["jurisdiction"] = "Jurisdiction"
         if "legal_status" in df.columns:
@@ -54,6 +54,7 @@ class PatentsComponent(BaseComponent):
             st.dataframe(df, use_container_width=True, hide_index=True)
             return
 
+        df["inventor_names"] = df["inventor_names"].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
         display_df = df[available_cols].rename(columns=col_map)
 
         # ── metrics ─────────────────────────────────────────────────────────
@@ -71,6 +72,7 @@ class PatentsComponent(BaseComponent):
         # Sort by publication_date descending
         if "Publication Date" in display_df.columns:
             display_df = display_df.sort_values("Publication Date", ascending=False, na_position="last")
+
 
         column_config = {
             "Title": st.column_config.TextColumn("Title", width="large"),

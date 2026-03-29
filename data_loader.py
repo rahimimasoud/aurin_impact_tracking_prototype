@@ -257,7 +257,7 @@ class GrantsDataLoader:
 
 _PATENTS_QUERY = f"""
     search patents for {_AURIN_SEARCH_TERMS}
-    return patents[id+title+publication_date+filing_date+assignees+inventors+jurisdiction+legal_status+dimensions_url]
+    return patents[id+title+publication_date+filing_date+assignees+inventor_names+jurisdiction+legal_status+dimensions_url]
 """
 
 

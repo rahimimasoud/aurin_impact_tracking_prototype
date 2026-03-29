@@ -60,7 +60,7 @@ else:
 
 # Render components if data is available
 if df_aurin_main is not None:
-    tab_research, tab_research_organisations, tab_policies, tab_grants, tab_patents = st.tabs(["Research Papers", "Research Organisations", "Policy Documents", "Grants", "Patents"])
+    tab_research, tab_research_organisations, tab_policies, tab_patents, tab_grants = st.tabs(["Research Papers", "Research Organisations", "Policy Documents", "Patents", "AURIN Fundings"])
 
     with tab_research:
         # Initialize and render all components
@@ -98,19 +98,19 @@ if df_aurin_main is not None:
         policy_docs = PolicyDocumentsComponent(data=df_policies)
         policy_docs.render()
 
-    with tab_grants:
-        grants_loader = GrantsDataLoader()
-        with st.spinner("Loading grants from Dimensions API..."):
-            df_grants = grants_loader.load_data(api_key)
-        grants = GrantsComponent(data=df_grants)
-        grants.render()
-
     with tab_patents:
         patents_loader = PatentsDataLoader()
         with st.spinner("Loading patents from Dimensions API..."):
             df_patents = patents_loader.load_data(api_key)
         patents = PatentsComponent(data=df_patents)
         patents.render()
+
+    with tab_grants:
+        grants_loader = GrantsDataLoader()
+        with st.spinner("Loading grants from Dimensions API..."):
+            df_grants = grants_loader.load_data(api_key)
+        grants = GrantsComponent(data=df_grants)
+        grants.render()
 
 else:
     if not api_key:
