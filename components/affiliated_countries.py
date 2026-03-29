@@ -81,6 +81,7 @@ class AffiliatedCountriesComponent(BaseComponent):
                         height=800,
                         showlegend=False,
                         coloraxis_showscale=False,  # Hide color scale
+                        dragmode=False,
                         geo=dict(
                             showframe=False,
                             showcoastlines=True,
@@ -88,7 +89,7 @@ class AffiliatedCountriesComponent(BaseComponent):
                             bgcolor='rgba(0,0,0,0)'
                         )
                     )
-                    st.plotly_chart(fig_map, use_container_width=True)
+                    st.plotly_chart(fig_map, use_container_width=True, config={'scrollZoom': False, 'displayModeBar': False})
                 else:
                     # Fallback to pie chart if no ISO codes found
                     fig_countries = px.pie(
@@ -124,6 +125,7 @@ class AffiliatedCountriesComponent(BaseComponent):
                         height=800,
                         showlegend=False,
                         coloraxis_showscale=False,  # Hide color scale
+                        dragmode=False,
                         geo=dict(
                             showframe=False,
                             showcoastlines=True,
@@ -131,7 +133,7 @@ class AffiliatedCountriesComponent(BaseComponent):
                             bgcolor='rgba(0,0,0,0)'
                         )
                     )
-                    st.plotly_chart(fig_map, use_container_width=True)
+                    st.plotly_chart(fig_map, use_container_width=True, config={'scrollZoom': False, 'displayModeBar': False})
                 except Exception:
                     # Final fallback to pie chart
                     fig_countries = px.pie(
