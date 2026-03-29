@@ -23,6 +23,8 @@ class AISummaryComponent(BaseComponent):
         policies_data: Optional[pd.DataFrame] = None,
         patents_data: Optional[pd.DataFrame] = None,
         grants_data: Optional[pd.DataFrame] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
         provider: Optional[AIProvider] = None,
         **kwargs,
     ):
@@ -31,6 +33,8 @@ class AISummaryComponent(BaseComponent):
         self.policies_data = policies_data
         self.patents_data = patents_data
         self.grants_data = grants_data
+        self.date_from = date_from
+        self.date_to = date_to
         self.provider: AIProvider = provider or GeminiProvider()
 
     def render(self) -> None:
@@ -55,6 +59,8 @@ class AISummaryComponent(BaseComponent):
                 policies_data=self.policies_data,
                 patents_data=self.patents_data,
                 grants_data=self.grants_data,
+                date_from=self.date_from,
+                date_to=self.date_to,
             )
             with st.spinner("Analysing research data..."):
                 try:

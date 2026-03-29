@@ -18,6 +18,8 @@ class ImpactContext:
     policies_data: Optional[pd.DataFrame] = None
     patents_data: Optional[pd.DataFrame] = None
     grants_data: Optional[pd.DataFrame] = None
+    date_from: Optional[str] = None  # YYYY-MM-DD or None
+    date_to: Optional[str] = None    # YYYY-MM-DD or None
 
     # ------------------------------------------------------------------ #
     # Internal helpers                                                     #
@@ -179,6 +181,14 @@ class ImpactContext:
     def to_text(self) -> str:
         """Compile key statistics from all datasets into a plain-text context block."""
         lines = ["# AURIN Research Impact Data\n"]
+
+        # --- Reporting period ---
+        if self.date_from or self.date_to:
+            period_from = self.date_from or "2010"
+            period_to = self.date_to or "present"
+            lines.append(f"**Reporting period: {period_from} to {period_to}**\n")
+        else:
+            lines.append("**Reporting period: 2010 to present (full dataset)**\n")
 
         # --- Research Papers (core metrics) ---
         lines.append("## Research Papers")

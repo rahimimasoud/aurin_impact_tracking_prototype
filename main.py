@@ -79,6 +79,8 @@ if df_aurin_main is not None:
             policies_data=df_policies,
             patents_data=df_patents,
             grants_data=df_grants,
+            date_from=from_date_str,
+            date_to=to_date_str,
         )
         ai_summary.render()
 
