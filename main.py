@@ -3,7 +3,6 @@ Main Streamlit application for AURIN Impact Tracking Dashboard.
 This file orchestrates all components and data loading.
 """
 import streamlit as st
-import datetime
 
 from data_loader import DimensionsDataLoader, PolicyDocumentsDataLoader, GrantsDataLoader, PatentsDataLoader
 from components.sidebar import SidebarComponent
@@ -13,8 +12,6 @@ from components.top_cited_articles import TopCitedArticlesComponent
 from components.affiliated_organisations import AffiliatedOrganisationsComponent
 from components.affiliated_countries import AffiliatedCountriesComponent
 from components.recent_papers import RecentPapersComponent
-from components.papers_last_6_months import PapersLast6MonthsComponent
-from components.citation_distribution import CitationDistributionComponent
 from components.policy_documents import PolicyDocumentsComponent
 from components.grants import GrantsComponent
 from components.patents import PatentsComponent
@@ -22,6 +19,7 @@ from components.research_categories import ResearchCategoriesComponent
 from components.sdg_categories import SDGCategoriesComponent
 from components.concepts import ConceptsComponent
 from components.trends import TrendsComponent
+from components.ai_summary import AISummaryComponent
 
 
 # Page configuration
@@ -64,10 +62,27 @@ else:
 
 # Render components if data is available
 if df_aurin_main is not None:
+    # Load secondary datasets up front so the AI summary can use them all
+    with st.spinner("Loading policy documents from Dimensions API..."):
+        df_policies = PolicyDocumentsDataLoader().load_data(api_key)
+    with st.spinner("Loading patents from Dimensions API..."):
+        df_patents = PatentsDataLoader().load_data(api_key)
+    with st.spinner("Loading grants from Dimensions API..."):
+        df_grants = GrantsDataLoader().load_data(api_key)
+
     tab_ai_summary, tab_research, tab_research_organisations, tab_policies, tab_patents, tab_grants = st.tabs(["AI Summary", "Research Papers", "Research Organisations", "Policy Documents", "Patents", "AURIN Fundings"])
 
     with tab_ai_summary:
-        st.info("To be implemented: AI-generated summary of AURIN research output.")
+        ai_summary = AISummaryComponent(
+            main_data=df_aurin_main,
+            affiliations_data=df_affiliations,
+            policies_data=df_policies,
+            patents_data=df_patents,
+            grants_data=df_grants,
+            date_from=from_date_str,
+            date_to=to_date_str,
+        )
+        ai_summary.render()
 
     with tab_research:
         # Initialize and render all components
@@ -109,23 +124,14 @@ if df_aurin_main is not None:
         
 
     with tab_policies:
-        policy_loader = PolicyDocumentsDataLoader()
-        with st.spinner("Loading policy documents from Dimensions API..."):
-            df_policies = policy_loader.load_data(api_key)
         policy_docs = PolicyDocumentsComponent(data=df_policies)
         policy_docs.render()
 
     with tab_patents:
-        patents_loader = PatentsDataLoader()
-        with st.spinner("Loading patents from Dimensions API..."):
-            df_patents = patents_loader.load_data(api_key)
         patents = PatentsComponent(data=df_patents)
         patents.render()
 
     with tab_grants:
-        grants_loader = GrantsDataLoader()
-        with st.spinner("Loading grants from Dimensions API..."):
-            df_grants = grants_loader.load_data(api_key)
         grants = GrantsComponent(data=df_grants)
         grants.render()
 

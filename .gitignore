@@ -23,3 +23,9 @@ __pycache__/**/**/**/**/**/**
 .venv/**/**/**/**/**
 .venv/**/**/**/**/**/*
 .venv/**/**/**/**/**/**
+.env
+components/ai_summary/__pycache__/
+components/ai_summary/__pycache__/*
+components/ai_summary/__pycache__/**/*
+components/ai_summary/__pycache__/**/**
+components/ai_summary/__pycache__/**/**/*
