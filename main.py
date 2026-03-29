@@ -5,7 +5,7 @@ This file orchestrates all components and data loading.
 import streamlit as st
 import datetime
 
-from data_loader import DimensionsDataLoader, PolicyDocumentsDataLoader
+from data_loader import DimensionsDataLoader, PolicyDocumentsDataLoader, GrantsDataLoader, PatentsDataLoader
 from components.sidebar import SidebarComponent
 from components.header import HeaderComponent
 from components.key_metrics import KeyMetricsComponent
@@ -16,6 +16,8 @@ from components.recent_papers import RecentPapersComponent
 from components.papers_last_6_months import PapersLast6MonthsComponent
 from components.citation_distribution import CitationDistributionComponent
 from components.policy_documents import PolicyDocumentsComponent
+from components.grants import GrantsComponent
+from components.patents import PatentsComponent
 
 
 # Page configuration
@@ -58,7 +60,7 @@ else:
 
 # Render components if data is available
 if df_aurin_main is not None:
-    tab_research, tab_research_organisations, tab_policies = st.tabs(["Research Papers", "Research Organisations", "Policies"])
+    tab_research, tab_research_organisations, tab_policies, tab_grants, tab_patents = st.tabs(["Research Papers", "Research Organisations", "Policy Documents", "Grants", "Patents"])
 
     with tab_research:
         # Initialize and render all components
@@ -95,6 +97,20 @@ if df_aurin_main is not None:
             df_policies = policy_loader.load_data(api_key)
         policy_docs = PolicyDocumentsComponent(data=df_policies)
         policy_docs.render()
+
+    with tab_grants:
+        grants_loader = GrantsDataLoader()
+        with st.spinner("Loading grants from Dimensions API..."):
+            df_grants = grants_loader.load_data(api_key)
+        grants = GrantsComponent(data=df_grants)
+        grants.render()
+
+    with tab_patents:
+        patents_loader = PatentsDataLoader()
+        with st.spinner("Loading patents from Dimensions API..."):
+            df_patents = patents_loader.load_data(api_key)
+        patents = PatentsComponent(data=df_patents)
+        patents.render()
 
 else:
     if not api_key:

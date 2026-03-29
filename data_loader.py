@@ -9,6 +9,13 @@ import dimcli
 import pandas as pd
 
 
+_AURIN_SEARCH_TERMS = (
+    '"\\\"Australian Urban Research Infrastructure Network\\\"'
+    ' OR \\\"Australia\'s Spatial Intelligence Network\\\"'
+    ' OR (\\\"AURIN\\\" AND \\\"NCRIS\\\")"'
+)
+
+
 class BaseDataLoader(ABC):
     """Abstract base class for data loaders."""
     
@@ -154,8 +161,8 @@ def _load_dimensions_data(api_key: str, endpoint: str, query: str, from_date: Op
         return None, None, None, None, None
 
 
-_POLICY_QUERY = """
-    search policy_documents for "\\"Australian Urban Research Infrastructure Network\\" OR \\"Australia's Spatial Intelligence Network\\""
+_POLICY_QUERY = f"""
+    search policy_documents for {_AURIN_SEARCH_TERMS}
     return policy_documents[id+title+year+linkout+publisher_org+publisher_org_country+publisher_org_city]
 """
 
@@ -201,6 +208,100 @@ class PolicyDocumentsDataLoader:
         return _load_policy_documents(api_key, self.endpoint)
 
 
+_GRANTS_QUERY = f"""
+    search grants for {_AURIN_SEARCH_TERMS}
+    return grants[id+title+start_date+end_date+funding_org_name+funding_usd+funder_countries+linkout]
+"""
+
+
+@st.cache_data
+def _load_grants(api_key: str, endpoint: str) -> Optional[pd.DataFrame]:
+    """
+    Cached function to load AURIN-related grants from Dimensions API.
+
+    Args:
+        api_key: Dimensions API key
+        endpoint: Dimensions API endpoint
+
+    Returns:
+        DataFrame of grants or None on failure
+    """
+    try:
+        if not _validate_api_key(api_key):
+            return None
+
+        dimcli.login(key=api_key, endpoint=endpoint)
+        dsl = dimcli.Dsl()
+        res = dsl.query_iterative(_GRANTS_QUERY)
+        df = res.as_dataframe()
+        return df if df is not None and not df.empty else pd.DataFrame()
+
+    except Exception as e:
+        error_msg = str(e)
+        if "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower():
+            st.error("❌ Authentication failed when loading grants.")
+        else:
+            st.error(f"❌ Error loading grants: {error_msg}")
+        return None
+
+
+class GrantsDataLoader:
+    """Loader for AURIN-relevant grants from Dimensions API."""
+
+    def __init__(self, endpoint: str = "https://app.dimensions.ai"):
+        self.endpoint = endpoint
+
+    def load_data(self, api_key: str) -> Optional[pd.DataFrame]:
+        return _load_grants(api_key, self.endpoint)
+
+
+_PATENTS_QUERY = f"""
+    search patents for {_AURIN_SEARCH_TERMS}
+    return patents[id+title+publication_date+filing_date+assignees+inventors+jurisdiction+legal_status+dimensions_url]
+"""
+
+
+@st.cache_data
+def _load_patents(api_key: str, endpoint: str) -> Optional[pd.DataFrame]:
+    """
+    Cached function to load AURIN-related patents from Dimensions API.
+
+    Args:
+        api_key: Dimensions API key
+        endpoint: Dimensions API endpoint
+
+    Returns:
+        DataFrame of patents or None on failure
+    """
+    try:
+        if not _validate_api_key(api_key):
+            return None
+
+        dimcli.login(key=api_key, endpoint=endpoint)
+        dsl = dimcli.Dsl()
+        res = dsl.query_iterative(_PATENTS_QUERY)
+        df = res.as_dataframe()
+        return df if df is not None and not df.empty else pd.DataFrame()
+
+    except Exception as e:
+        error_msg = str(e)
+        if "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower():
+            st.error("❌ Authentication failed when loading patents.")
+        else:
+            st.error(f"❌ Error loading patents: {error_msg}")
+        return None
+
+
+class PatentsDataLoader:
+    """Loader for AURIN-relevant patents from Dimensions API."""
+
+    def __init__(self, endpoint: str = "https://app.dimensions.ai"):
+        self.endpoint = endpoint
+
+    def load_data(self, api_key: str) -> Optional[pd.DataFrame]:
+        return _load_patents(api_key, self.endpoint)
+
+
 class DimensionsDataLoader(BaseDataLoader):
     """Concrete implementation of data loader for Dimensions API."""
     
@@ -213,8 +314,8 @@ class DimensionsDataLoader(BaseDataLoader):
             query: Query string for fetching publications
         """
         self.endpoint = endpoint
-        self.query = query or """
-            search publications for "\\"Australian Urban Research Infrastructure Network\\""
+        self.query = query or f"""
+            search publications for {_AURIN_SEARCH_TERMS}
             return publications[id+title+authors+pages+type+volume+issue+journal+times_cited+date+date_online]
         """
     
