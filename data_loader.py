@@ -316,7 +316,7 @@ class DimensionsDataLoader(BaseDataLoader):
         self.endpoint = endpoint
         self.query = query or f"""
             search publications for {_AURIN_SEARCH_TERMS}
-            return publications[id+title+authors+pages+type+volume+issue+journal+times_cited+date+date_online]
+            return publications[id+title+authors+pages+type+volume+issue+journal+times_cited+date+date_online+category_for+category_sdg+concepts]
         """
     
     def build_query_with_dates(self, from_date: Optional[str] = None, to_date: Optional[str] = None) -> str:
