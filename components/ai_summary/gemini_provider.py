@@ -4,11 +4,7 @@ Google Gemini implementation of AIProvider.
 Reads GEMINI_API_KEY from the environment (loaded via .env) and calls
 the gemini-2.5-flash model to produce the impact summary.
 """
-import os
-from dotenv import load_dotenv
-
 from components.ai_summary.base import AIProvider, ImpactContext, SUMMARY_PROMPT_TEMPLATE
-load_dotenv()
 
 _MODEL = "gemini-2.5-flash"
 
@@ -16,14 +12,20 @@ _MODEL = "gemini-2.5-flash"
 class GeminiProvider(AIProvider):
     """AIProvider backed by Google Gemini generative AI."""
 
+    def __init__(self, api_key: str = None):
+        self._api_key = api_key
+
+    def _resolve_key(self) -> str:
+        return self._api_key or ""
+
     def is_available(self) -> bool:
-        return bool(os.getenv("GEMINI_API_KEY"))
+        return bool(self._resolve_key())
 
     def generate_summary(self, context: ImpactContext) -> str:
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = self._resolve_key()
         if not api_key:
             raise RuntimeError(
-                "GEMINI_API_KEY is not set. Add it to your .env file."
+                "Gemini API key is not set. Enter it in the sidebar to enable AI summaries."
             )
 
         try:

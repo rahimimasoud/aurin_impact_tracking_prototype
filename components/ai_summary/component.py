@@ -48,10 +48,10 @@ class AISummaryComponent(BaseComponent):
         if not self.provider.is_available():
             st.warning(
                 "AI provider is not configured. "
-                "Set `GEMINI_API_KEY` in your `.env` file to enable AI summaries."
+                "Enter your Gemini API key in the sidebar to enable AI summaries."
             )
             return
-
+        
         if st.button("Generate Impact Summary", type="primary"):
             context = ImpactContext(
                 main_data=self.data,

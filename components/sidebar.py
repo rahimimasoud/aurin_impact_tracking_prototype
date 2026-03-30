@@ -20,6 +20,10 @@ class SidebarComponent(BaseComponent):
             st.session_state.api_key = None
         if 'api_key_input' not in st.session_state:
             st.session_state.api_key_input = ""
+        if 'gemini_api_key' not in st.session_state:
+            st.session_state.gemini_api_key = None
+        if 'gemini_api_key_input' not in st.session_state:
+            st.session_state.gemini_api_key_input = ""
         if 'from_date' not in st.session_state:
             st.session_state.from_date = None
         if 'to_date' not in st.session_state:
@@ -37,15 +41,24 @@ class SidebarComponent(BaseComponent):
         st.sidebar.info("This dashboard displays AURIN research impact, metrics and analytics.")
                 
         st.sidebar.subheader("🔑 Enter Your Credentials")
-        # API Key input
+        # Dimensions API Key input
         api_key_input = st.sidebar.text_input(
-            "API Key",
+            "Dimensions API Key",
             type="password",
-            help="Enter your API key to access the data",
-            placeholder="Enter your API key here...",
+            help="Enter your Dimensions API key to access the data",
+            placeholder="Enter your Dimensions API key here...",
             value=st.session_state.get('api_key_input', '')
         )
-                
+
+        # Gemini API Key input
+        gemini_api_key_input = st.sidebar.text_input(
+            "Gemini API Key",
+            type="password",
+            help="Enter your Google Gemini API key to enable AI summaries",
+            placeholder="Enter your Gemini API key here...",
+            value=st.session_state.get('gemini_api_key_input', '')
+        )
+
         with st.sidebar.expander("📅 Date Range Filter"):
             st.info("Filter reports by date range (optional)")
 
@@ -78,29 +91,37 @@ class SidebarComponent(BaseComponent):
         if submit_key and api_key_input:
             st.session_state.api_key = api_key_input
             st.session_state.api_key_input = api_key_input
-            st.sidebar.success("✅ API key submitted successfully!")
+            if gemini_api_key_input:
+                st.session_state.gemini_api_key = gemini_api_key_input
+                st.session_state.gemini_api_key_input = gemini_api_key_input
+            st.sidebar.success("✅ API key(s) submitted successfully!")
             st.rerun()
         elif submit_key and not api_key_input:
-            st.sidebar.error("❌ Please enter an API key before submitting")
-        
+            st.sidebar.error("❌ Please enter a Dimensions API key before submitting")
+
         # Handle API key clearing
         if clear_key:
             st.session_state.api_key = None
             st.session_state.api_key_input = ""
-            st.sidebar.info("🗑️ API key cleared")
+            st.session_state.gemini_api_key = None
+            st.session_state.gemini_api_key_input = ""
+            st.sidebar.info("🗑️ API keys cleared")
             st.rerun()
-        
-        # Store the input value in session state for persistence
+
+        # Store input values in session state for persistence
         if api_key_input != st.session_state.get('api_key_input', ''):
             st.session_state.api_key_input = api_key_input
-        
+        if gemini_api_key_input != st.session_state.get('gemini_api_key_input', ''):
+            st.session_state.gemini_api_key_input = gemini_api_key_input
 
         st.sidebar.markdown("---")
         # Show status
         if st.session_state.get('api_key'):
-            st.sidebar.success("✅ API key is active")
+            st.sidebar.success("✅ Dimensions API key is active")
         else:
-            st.sidebar.warning("⚠️ Please enter and submit your API key to load data")
+            st.sidebar.warning("⚠️ Please enter and submit your Dimensions API key to load data")
+        if st.session_state.get('gemini_api_key'):
+            st.sidebar.success("✅ Gemini API key is active")
     
     def get_api_key(self) -> str:
         """
@@ -111,6 +132,15 @@ class SidebarComponent(BaseComponent):
         """
         return st.session_state.get('api_key')
     
+    def get_gemini_api_key(self) -> str:
+        """
+        Get the current Gemini API key from session state.
+
+        Returns:
+            Gemini API key string or None
+        """
+        return st.session_state.get('gemini_api_key')
+
     def get_date_range(self) -> tuple:
         """
         Get the current date range from session state.

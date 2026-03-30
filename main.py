@@ -20,6 +20,7 @@ from components.sdg_categories import SDGCategoriesComponent
 from components.concepts import ConceptsComponent
 from components.trends import TrendsComponent
 from components.ai_summary import AISummaryComponent
+from components.ai_summary.gemini_provider import GeminiProvider
 
 
 # Page configuration
@@ -38,8 +39,9 @@ sidebar.render()
 header = HeaderComponent()
 header.render()
 
-# Get API key and date range from sidebar
+# Get API key, Gemini key and date range from sidebar
 api_key = sidebar.get_api_key()
+gemini_api_key = sidebar.get_gemini_api_key()
 from_date, to_date = sidebar.get_date_range()
 
 # Convert date objects to strings in YYYY-MM-DD format if they exist
@@ -81,6 +83,7 @@ if df_aurin_main is not None:
             grants_data=df_grants,
             date_from=from_date_str,
             date_to=to_date_str,
+            provider=GeminiProvider(api_key=gemini_api_key),
         )
         ai_summary.render()
 
