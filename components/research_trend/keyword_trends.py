@@ -9,7 +9,7 @@ from typing import Dict, List
 import pandas as pd
 import streamlit as st
 
-from ._constants import FOR_TIERS, TIER_BADGE
+from ._constants import FOR_TIERS, TIER_BADGE, KEYWORD_STOPWORDS
 
 
 def render_keyword_trends(
@@ -65,7 +65,7 @@ def render_keyword_trends(
                 else:
                     continue
                 concept = concept.strip().lower()
-                if concept and len(concept) > 2:
+                if concept and len(concept) > 2 and concept not in KEYWORD_STOPWORDS:
                     concept_counts[concept] = concept_counts.get(concept, 0) + 1
 
         if not concept_counts:
