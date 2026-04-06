@@ -435,7 +435,7 @@ class PatentsDataLoader:
 #         return _load_research_trends_publications(api_key, self.endpoint)
 
 
-_TREND_MONITOR_QUERY = """
+_PUBLICATIONS_TREND_MONITOR_QUERY = """
     search publications
     where research_org_country_names = "Australia"
     and (category_for.name @ "*urban*" or category_for.name @ "*planning*" or category_for.name @ "*geography*" or category_for.name @ "*geomatics*" or category_for.name @ "*demography*" or category_for.name @ "*sociology*")
@@ -447,7 +447,7 @@ _TREND_MONITOR_QUERY = """
 def _load_research_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.DataFrame]:
     """
     Cached function to load Australian urban/spatial publications for the Research Trend Monitor.
-    Always queries the last 20 years to support two 10-year comparison windows.
+    Always queries the last 10 years to support comparison windows.
 
     Args:
         api_key: Dimensions API key
@@ -462,13 +462,13 @@ def _load_research_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.Dat
 
         import datetime
         current_year = datetime.datetime.now().year
-        from_year = current_year - 19  # 20-year window (inclusive)
+        from_year = current_year - 10  # 10-year window (inclusive)
         from_date = f"{from_year}-01-01"
 
         dimcli.login(key=api_key, endpoint=endpoint)
         dsl = dimcli.Dsl()
         query = build_query_with_dates(
-            _TREND_MONITOR_QUERY, from_date, to_date=None, date_field="year", year_only=True
+            _PUBLICATIONS_TREND_MONITOR_QUERY, from_date, to_date=None, date_field="year", year_only=True
         )
         res = dsl.query_iterative(query)
         df = res.as_dataframe()
@@ -484,7 +484,7 @@ def _load_research_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.Dat
 
 
 class ResearchTrendMonitorDataLoader:
-    """Loader for the Research Trend Monitor — 20-year AU urban/spatial publications."""
+    """Loader for the Research Trend Monitor: 10-year AU urban research publications."""
 
     def __init__(self, endpoint: str = "https://app.dimensions.ai"):
         self.endpoint = endpoint
