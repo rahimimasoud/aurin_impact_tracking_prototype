@@ -34,38 +34,39 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize sidebar component
+# Initialize components
 sidebar = SidebarComponent()
+header = HeaderComponent()
+
+# Sidebar: navigation + config
 sidebar.render()
 
-# Initialize header component
-header = HeaderComponent()
+# Header: title
 header.render()
 
-# Get API key, Gemini key and date range from sidebar
+# Retrieve credentials and active tab
 api_key = sidebar.get_api_key()
 gemini_api_key = sidebar.get_gemini_api_key()
 from_date, to_date = sidebar.get_date_range()
+active_tab = sidebar.get_active_tab()
 
 # Convert date objects to strings in YYYY-MM-DD format if they exist
 from_date_str = from_date.strftime("%Y-%m-%d") if from_date else None
 to_date_str = to_date.strftime("%Y-%m-%d") if to_date else None
 
-# Initialize data loader
+# Load data
 data_loader = DimensionsDataLoader()
 
-# Load data
 if api_key:
     with st.spinner("Loading AURIN data from Dimensions API..."):
         df_aurin_main, df_authors, df_affiliations, df_funders, df_investigators = data_loader.load_data(
-            api_key, 
-            from_date=from_date_str, 
+            api_key,
+            from_date=from_date_str,
             to_date=to_date_str
         )
 else:
     df_aurin_main, df_authors, df_affiliations, df_funders, df_investigators = None, None, None, None, None
 
-# Render components if data is available
 if df_aurin_main is not None:
     # Load secondary datasets up front so the AI summary can use them all
     with st.spinner("Loading policy documents from Dimensions API..."):
@@ -79,10 +80,9 @@ if df_aurin_main is not None:
     with st.spinner("Loading grant trend monitor data from Dimensions API..."):
         df_grant_trend_monitor = GrantTrendMonitorDataLoader().load_data(api_key)
 
-    tab_ai_summary, tab_research, tab_research_organisations, tab_policies, tab_patents, tab_grants, tab_trend_monitor, tab_grant_trend_monitor = st.tabs(["AI Summary", "Research Papers", "Research Organisations", "Policy Documents", "Patents", "AURIN Fundings", "Research Trend Monitor", "Grant Trend Monitor"])
-
-    with tab_ai_summary:
-        ai_summary = AISummaryComponent(
+    # Render the active section
+    if active_tab == "ai_summary":
+        AISummaryComponent(
             main_data=df_aurin_main,
             affiliations_data=df_affiliations,
             policies_data=df_policies,
@@ -91,70 +91,38 @@ if df_aurin_main is not None:
             date_from=from_date_str,
             date_to=to_date_str,
             provider=GeminiProvider(api_key=gemini_api_key),
-        )
-        ai_summary.render()
+        ).render()
 
-    with tab_research:
-        # Initialize and render all components
-        key_metrics = KeyMetricsComponent(
-            main_data=df_aurin_main,
-            affiliations_data=df_affiliations
-        )
-        key_metrics.render()
+    elif active_tab == "research_papers":
+        KeyMetricsComponent(main_data=df_aurin_main, affiliations_data=df_affiliations).render()
+        TrendsComponent(data=df_aurin_main).render()
+        TopCitedArticlesComponent(data=df_aurin_main).render()
+        RecentPapersComponent(data=df_aurin_main).render()
+        ResearchCategoriesComponent(data=df_aurin_main).render()
+        SDGCategoriesComponent(data=df_aurin_main).render()
+        ConceptsComponent(data=df_aurin_main).render()
 
-        trends = TrendsComponent(data=df_aurin_main)
-        trends.render()
+    elif active_tab == "research_organisations":
+        AffiliatedOrganisationsComponent(main_data=df_aurin_main, affiliations_data=df_affiliations).render()
+        AffiliatedCountriesComponent(affiliations_data=df_affiliations).render()
 
-        top_cited = TopCitedArticlesComponent(data=df_aurin_main)
-        top_cited.render()
+    elif active_tab == "policy_documents":
+        PolicyDocumentsComponent(data=df_policies).render()
 
-        recent_papers = RecentPapersComponent(data=df_aurin_main)
-        recent_papers.render()
+    elif active_tab == "patents":
+        PatentsComponent(data=df_patents).render()
 
-        research_categories = ResearchCategoriesComponent(data=df_aurin_main)
-        research_categories.render()
+    elif active_tab == "aurin_fundings":
+        GrantsComponent(data=df_grants).render()
 
-        sdg_categories = SDGCategoriesComponent(data=df_aurin_main)
-        sdg_categories.render()
+    elif active_tab == "research_trend_monitor":
+        ResearchTrendMonitorComponent(publications_data=df_trend_monitor).render()
 
-        concepts = ConceptsComponent(data=df_aurin_main)
-        concepts.render()
-
-
-
-    with tab_research_organisations:
-        affiliated_orgs = AffiliatedOrganisationsComponent(
-            main_data=df_aurin_main,
-            affiliations_data=df_affiliations
-        )
-        affiliated_orgs.render()
-
-        affiliated_countries = AffiliatedCountriesComponent(affiliations_data=df_affiliations)
-        affiliated_countries.render()
-        
-
-    with tab_policies:
-        policy_docs = PolicyDocumentsComponent(data=df_policies)
-        policy_docs.render()
-
-    with tab_patents:
-        patents = PatentsComponent(data=df_patents)
-        patents.render()
-
-    with tab_grants:
-        grants = GrantsComponent(data=df_grants)
-        grants.render()
-
-    with tab_trend_monitor:
-        trend_monitor = ResearchTrendMonitorComponent(publications_data=df_trend_monitor)
-        trend_monitor.render()
-
-    with tab_grant_trend_monitor:
-        grant_trend_monitor = GrantTrendMonitorComponent(grants_data=df_grant_trend_monitor)
-        grant_trend_monitor.render()
+    elif active_tab == "grant_trend_monitor":
+        GrantTrendMonitorComponent(grants_data=df_grant_trend_monitor).render()
 
 else:
     if not api_key:
-        st.info("👆 Please enter your Dimensions API key in the sidebar to load the dashboard data.")
+        st.info("👈 Please configure your Dimensions API key using the sidebar to load the dashboard.")
     else:
         st.error("Failed to load data. Please check your API credentials and connection.")
