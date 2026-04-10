@@ -7,20 +7,21 @@ import streamlit as st
 from data_loader import DimensionsDataLoader, PolicyDocumentsDataLoader, GrantsDataLoader, PatentsDataLoader, ResearchTrendMonitorDataLoader, GrantTrendMonitorDataLoader
 from components.sidebar import SidebarComponent
 from components.header import HeaderComponent
-from components.key_metrics import KeyMetricsComponent
-from components.top_cited_articles import TopCitedArticlesComponent
-from components.affiliated_organisations import AffiliatedOrganisationsComponent
-from components.affiliated_countries import AffiliatedCountriesComponent
-from components.recent_papers import RecentPapersComponent
+from components.research_papers import (
+    KeyMetricsComponent,
+    TrendsComponent,
+    TopCitedArticlesComponent,
+    RecentPapersComponent,
+    ResearchCategoriesComponent,
+    SDGCategoriesComponent,
+    ConceptsComponent,
+)
+from components.research_organisations import AffiliatedOrganisationsComponent, AffiliatedCountriesComponent
 from components.policy_documents import PolicyDocumentsComponent
-from components.grants import GrantsComponent
 from components.patents import PatentsComponent
-from components.research_categories import ResearchCategoriesComponent
-from components.sdg_categories import SDGCategoriesComponent
-from components.concepts import ConceptsComponent
-from components.trends import TrendsComponent
-from components.research_trend_monitor import ResearchTrendMonitorComponent
-from components.grant_trend_monitor import GrantTrendMonitorComponent
+from components.aurin_fundings import GrantsComponent
+from components.research_trend import ResearchTrendMonitorComponent
+from components.grant_trend import GrantTrendMonitorComponent
 from components.ai_summary import AISummaryComponent
 from components.ai_summary.gemini_provider import GeminiProvider
 
