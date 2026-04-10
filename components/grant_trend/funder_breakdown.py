@@ -74,27 +74,16 @@ def render_funder_breakdown(
                 else "—"
             )
             funder_rows_html.append(
-                f"""
-                <div style="margin-bottom:8px;">
-                  <div style="display:flex; justify-content:space-between;
-                              align-items:center; margin-bottom:2px;">
-                    <span style="font-size:12px; color:#374151; max-width:65%;
-                                 overflow:hidden; text-overflow:ellipsis;
-                                 white-space:nowrap;" title="{fr['funding_org_name']}">
-                      {fr["funding_org_name"]}
-                    </span>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                      <span style="font-size:11px; color:#6b7280;">{usd_str}</span>
-                      <span style="font-size:12px; font-weight:700;
-                                   color:#111827;">{fr["grant_count"]:,}</span>
-                    </div>
-                  </div>
-                  <div style="background:rgba(128,128,128,0.15); border-radius:3px; height:5px;">
-                    <div style="width:{bar_pct}%; background:{badge['fg']};
-                                border-radius:3px; height:5px;"></div>
-                  </div>
-                </div>
-                """
+                f'<div style="margin-bottom:8px;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
+                f'<span style="font-size:12px;color:#374151;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{fr["funding_org_name"]}">{fr["funding_org_name"]}</span>'
+                f'<div style="display:flex;align-items:center;gap:8px;">'
+                f'<span style="font-size:11px;color:#6b7280;">{usd_str}</span>'
+                f'<span style="font-size:12px;font-weight:700;color:#111827;">{fr["grant_count"]:,}</span>'
+                f'</div></div>'
+                f'<div style="background:rgba(128,128,128,0.15);border-radius:3px;height:5px;">'
+                f'<div style="width:{bar_pct}%;background:{badge["fg"]};border-radius:3px;height:5px;"></div>'
+                f'</div></div>'
             )
 
         st.markdown(
