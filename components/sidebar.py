@@ -59,7 +59,7 @@ def _show_config_dialog():
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🔑 Submit", type="primary", use_container_width=True):
+        if st.button("🔑 Submit", type="primary", width='stretch'):
             if not api_key_input:
                 st.error("❌ Please enter a Dimensions API key")
             else:
@@ -71,7 +71,7 @@ def _show_config_dialog():
                 st.session_state.show_config = False
                 st.rerun()
     with col2:
-        if st.button("🗑️ Clear", use_container_width=True):
+        if st.button("🗑️ Clear", width='stretch'):
             st.session_state.api_key = None
             st.session_state.api_key_input = ""
             st.session_state.gemini_api_key = None
@@ -112,7 +112,7 @@ class SidebarComponent(BaseComponent):
     def render(self) -> None:
         st.sidebar.image(
             "https://data.aurin.org.au/assets/aurin-logo-400-D0zkc36m.png",
-            use_container_width=True
+            width='stretch'
         )
 
         st.sidebar.markdown(
@@ -131,7 +131,7 @@ class SidebarComponent(BaseComponent):
 
         st.sidebar.markdown("---")
 
-        if st.sidebar.button("⚙️ Configure", use_container_width=True):
+        if st.sidebar.button("⚙️ Configure", width='stretch'):
             st.session_state.show_config = True
 
         if st.session_state.get('show_config'):

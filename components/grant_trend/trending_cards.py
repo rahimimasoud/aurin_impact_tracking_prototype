@@ -111,7 +111,7 @@ def render_trending_cards(
             fig = _build_sparkline(df_exploded, row["for_division"])
             st.plotly_chart(
                 fig,
-                use_container_width=True,
+                width='stretch',
                 config={"displayModeBar": False},
                 key=f"grant_sparkline_{row['for_division']}",
             )

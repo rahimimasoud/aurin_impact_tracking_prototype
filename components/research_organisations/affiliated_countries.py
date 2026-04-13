@@ -89,7 +89,7 @@ class AffiliatedCountriesComponent(BaseComponent):
                             bgcolor='rgba(0,0,0,0)'
                         )
                     )
-                    st.plotly_chart(fig_map, use_container_width=True, config={'scrollZoom': False, 'displayModeBar': False})
+                    st.plotly_chart(fig_map, width='stretch', config={'scrollZoom': False, 'displayModeBar': False})
                 else:
                     # Fallback to pie chart if no ISO codes found
                     fig_countries = px.pie(
@@ -98,7 +98,7 @@ class AffiliatedCountriesComponent(BaseComponent):
                         title="Distribution of Publications by Country"
                     )
                     fig_countries.update_layout(height=800)
-                    st.plotly_chart(fig_countries, use_container_width=True)
+                    st.plotly_chart(fig_countries, width='stretch')
             else:
                 # Fallback: try using country names directly (plotly may recognize some)
                 try:
@@ -133,7 +133,7 @@ class AffiliatedCountriesComponent(BaseComponent):
                             bgcolor='rgba(0,0,0,0)'
                         )
                     )
-                    st.plotly_chart(fig_map, use_container_width=True, config={'scrollZoom': False, 'displayModeBar': False})
+                    st.plotly_chart(fig_map, width='stretch', config={'scrollZoom': False, 'displayModeBar': False})
                 except Exception:
                     # Final fallback to pie chart
                     fig_countries = px.pie(
@@ -142,7 +142,7 @@ class AffiliatedCountriesComponent(BaseComponent):
                         title="Distribution of Publications by Country"
                     )
                     fig_countries.update_layout(height=800)
-                    st.plotly_chart(fig_countries, use_container_width=True)
+                    st.plotly_chart(fig_countries, width='stretch')
         else:
             st.info("No affiliated countries found.")
 

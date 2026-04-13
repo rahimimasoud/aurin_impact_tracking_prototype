@@ -61,7 +61,7 @@ class TrendsComponent(BaseComponent):
             yaxis=dict(title='Number of Papers'),
             legend=dict(orientation='h', y=1.1),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     def _render_publication_types_over_time(self, df: pd.DataFrame) -> None:
         if 'type' not in df.columns:
@@ -83,7 +83,7 @@ class TrendsComponent(BaseComponent):
             labels={'year': 'Year', 'count': 'Number of Papers', 'type': 'Type'},
         )
         fig.update_layout(height=350, xaxis=dict(tickmode='linear', dtick=1))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
     def render(self) -> None:

@@ -146,7 +146,7 @@ class AffiliatedOrganisationsComponent(BaseComponent):
             
             st.dataframe(
                 display_orgs,
-                use_container_width=True,
+                width='stretch',
                 hide_index=True
             )
             
@@ -167,7 +167,7 @@ class AffiliatedOrganisationsComponent(BaseComponent):
                     color_continuous_scale='Blues'
                 )
                 fig_orgs.update_layout(height=500, yaxis={'categoryorder': 'total ascending'})
-                st.plotly_chart(fig_orgs, use_container_width=True)
+                st.plotly_chart(fig_orgs, width='stretch')
             
             with col2:
                 # Organizations by country
@@ -178,7 +178,7 @@ class AffiliatedOrganisationsComponent(BaseComponent):
                     title="Organizations by Country"
                 )
                 fig_countries.update_layout(height=500)
-                st.plotly_chart(fig_countries, use_container_width=True)
+                st.plotly_chart(fig_countries, width='stretch')
         else:
             st.warning("No organizations found matching your search criteria.")
 

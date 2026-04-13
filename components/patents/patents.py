@@ -51,7 +51,7 @@ class PatentsComponent(BaseComponent):
 
         available_cols = [c for c in col_map if c in df.columns]
         if not available_cols:
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, width='stretch', hide_index=True)
             return
 
         df["inventor_names"] = df["inventor_names"].apply(lambda x: ", ".join(x) if isinstance(x, list) else x)
@@ -88,7 +88,7 @@ class PatentsComponent(BaseComponent):
 
         st.dataframe(
             display_df,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config=column_config,
         )

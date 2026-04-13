@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 import streamlit as st
 import dimcli
 import pandas as pd
+from data import AurinDatabase, TREND_FIXED
 
 
 _AURIN_SEARCH_TERMS = (
@@ -123,11 +124,21 @@ def _load_dimensions_data(api_key: str, endpoint: str, query: str, from_date: Op
     Returns:
         Tuple of DataFrames (main, authors, affiliations, funders, investigators)
     """
+    db = AurinDatabase()
+    if db.is_cached("publications", from_date, to_date):
+        return (
+            db.read_table("publications"),
+            db.read_table("authors"),
+            db.read_table("affiliations"),
+            None,
+            db.read_table("investigators"),
+        )
+
     try:
         if not _validate_api_key(api_key):
             st.error("Please enter your Dimensions API key in the sidebar to load data.")
             return None, None, None, None, None
-        
+
         dimcli.login(key=api_key, endpoint=endpoint)
         dsl = dimcli.Dsl()
         
@@ -137,7 +148,7 @@ def _load_dimensions_data(api_key: str, endpoint: str, query: str, from_date: Op
         df_aurin_main = res_aurin.as_dataframe()
         df_authors = res_aurin.as_dataframe_authors()
         df_affiliations = res_aurin.as_dataframe_authors_affiliations()
-        df_funders = res_aurin.as_dataframe_funders()
+        df_funders = None
         df_investigators = res_aurin.as_dataframe_investigators()
         
         # Join times_cited from df_aurin_main to df_affiliations
@@ -163,8 +174,15 @@ def _load_dimensions_data(api_key: str, endpoint: str, query: str, from_date: Op
                 if 'id' in df_affiliations.columns:
                     df_affiliations = df_affiliations.drop(columns=['id'], errors='ignore')
         
+        wrote = db.write_dataframe(df_aurin_main,     "publications")
+        db.write_dataframe(df_authors,         "authors")
+        db.write_dataframe(df_affiliations,    "affiliations")
+        db.write_dataframe(df_investigators,   "investigators")
+        if wrote:
+            db.record_fetch("publications", from_date, to_date, len(df_aurin_main) if df_aurin_main is not None else 0)
+
         return df_aurin_main, df_authors, df_affiliations, df_funders, df_investigators
-        
+
     except Exception as e:
         error_msg = str(e)
         if "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower():
@@ -196,6 +214,10 @@ def _load_policy_documents(api_key: str, endpoint: str, from_date: Optional[str]
     Returns:
         DataFrame of policy documents or None on failure
     """
+    db = AurinDatabase()
+    if db.is_cached("policy_documents", from_date, to_date):
+        return db.read_table("policy_documents")
+
     try:
         if not _validate_api_key(api_key):
             return None
@@ -205,7 +227,10 @@ def _load_policy_documents(api_key: str, endpoint: str, from_date: Optional[str]
         query = build_query_with_dates(_POLICY_QUERY, from_date, to_date, date_field="year", year_only=True)
         res = dsl.query_iterative(query)
         df = res.as_dataframe()
-        return df if df is not None and not df.empty else pd.DataFrame()
+        df = df if df is not None and not df.empty else pd.DataFrame()
+        if db.write_dataframe(df, "policy_documents"):
+            db.record_fetch("policy_documents", from_date, to_date, len(df))
+        return df
 
     except Exception as e:
         error_msg = str(e)
@@ -246,6 +271,10 @@ def _load_grants(api_key: str, endpoint: str, from_date: Optional[str] = None, t
     Returns:
         DataFrame of grants or None on failure
     """
+    db = AurinDatabase()
+    if db.is_cached("grants", from_date, to_date):
+        return db.read_table("grants")
+
     try:
         if not _validate_api_key(api_key):
             return None
@@ -255,7 +284,10 @@ def _load_grants(api_key: str, endpoint: str, from_date: Optional[str] = None, t
         query = build_query_with_dates(_GRANTS_QUERY, from_date, to_date, date_field="start_date")
         res = dsl.query_iterative(query)
         df = res.as_dataframe()
-        return df if df is not None and not df.empty else pd.DataFrame()
+        df = df if df is not None and not df.empty else pd.DataFrame()
+        if db.write_dataframe(df, "grants"):
+            db.record_fetch("grants", from_date, to_date, len(df))
+        return df
 
     except Exception as e:
         error_msg = str(e)
@@ -296,6 +328,10 @@ def _load_patents(api_key: str, endpoint: str, from_date: Optional[str] = None, 
     Returns:
         DataFrame of patents or None on failure
     """
+    db = AurinDatabase()
+    if db.is_cached("patents", from_date, to_date):
+        return db.read_table("patents")
+
     try:
         if not _validate_api_key(api_key):
             return None
@@ -305,7 +341,10 @@ def _load_patents(api_key: str, endpoint: str, from_date: Optional[str] = None, 
         query = build_query_with_dates(_PATENTS_QUERY, from_date, to_date, date_field="publication_date")
         res = dsl.query_iterative(query)
         df = res.as_dataframe()
-        return df if df is not None and not df.empty else pd.DataFrame()
+        df = df if df is not None and not df.empty else pd.DataFrame()
+        if db.write_dataframe(df, "patents"):
+            db.record_fetch("patents", from_date, to_date, len(df))
+        return df
 
     except Exception as e:
         error_msg = str(e)
@@ -329,7 +368,56 @@ class PatentsDataLoader:
 _PUBLICATIONS_TREND_MONITOR_QUERY = """
     search publications
     where research_org_country_names = "Australia"
-    and (category_for.name @ "*urban*" or category_for.name @ "*planning*" or category_for.name @ "*geography*" or category_for.name @ "*geomatics*" or category_for.name @ "*demography*" or category_for.name @ "*sociology*")
+    and (
+        category_for.name @ "*urban*" or 
+        category_for.name @ "*planning*" or 
+        category_for.name @ "*geography*" or 
+        category_for.name @ "*geomatics*" or 
+        category_for.name @ "*demography*" or 
+        category_for.name @ "*sociology*" or
+        category_for.name @ "*community*" or
+        category_for.name @ "*geospatial*" or
+        category_for.name @ "*transport*" or
+        category_for.name @ "*city*" or
+        category_for.name @ "*regional*" or
+        category_for.name @ "*rural*" or
+        category_for.name @ "*housing*" or
+        category_for.name @ "*infrastructure*" or
+        category_for.name @ "*built*" or
+        category_for.name @ "*civil*" or
+        category_for.name @ "*asset management*" or
+        category_for.name @ "*population*" or
+        category_for.name @ "*social*" or
+        category_for.name @ "*economic*" or
+        category_for.name @ "*environment*" or
+        category_for.name @ "*ecological*" or
+        category_for.name @ "*ecology*" or
+        category_for.name @ "*natural hazards*" or
+        category_for.name @ "*hydrology*" or
+        category_for.name @ "*water*" or
+        category_for.name @ "*waste*" or
+        category_for.name @ "*mining*" or
+        category_for.name @ "*air quality*" or
+        category_for.name @ "*energy*" or
+        category_for.name @ "*sustainable*" or
+        category_for.name @ "*commerce*" or
+        category_for.name @ "*biodiversity*" or
+        category_for.name @ "*epidemiology*" or
+        category_for.name @ "*policy*" or
+        category_for.name @ "*inequalities*" or
+        category_for.name @ "*sustainability*" or
+        category_for.name @ "*sustainable*" or
+        category_for.name @ "*climate*" or
+        category_for.name @ "*health*" or
+        category_for.name @ "*photogrammetry*" or
+        category_for.name @ "*remote sensing*" or
+        category_for.name @ "*poverty*" or
+        category_for.name @ "*wellbeing*" or
+        category_for.name @ "*aboriginal*" or
+        category_for.name @ "*indigenous*" or
+        category_for.name @ "*torres strait islander*" or
+        category_for.name @ "*development*"
+        )
     return publications[id+year+category_for+concepts]
 """
 
@@ -347,6 +435,10 @@ def _load_research_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.Dat
     Returns:
         DataFrame of publications or empty DataFrame on failure
     """
+    db = AurinDatabase()
+    if db.is_cached("research_trend", TREND_FIXED, TREND_FIXED, max_age_days=7):
+        return db.read_table("research_trend")
+
     try:
         if not _validate_api_key(api_key):
             return None
@@ -363,7 +455,10 @@ def _load_research_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.Dat
         )
         res = dsl.query_iterative(query)
         df = res.as_dataframe()
-        return df if df is not None and not df.empty else pd.DataFrame()
+        df = df if df is not None and not df.empty else pd.DataFrame()
+        if db.write_dataframe(df, "research_trend"):
+            db.record_fetch("research_trend", TREND_FIXED, TREND_FIXED, len(df))
+        return df
 
     except Exception as e:
         error_msg = str(e)
@@ -387,7 +482,56 @@ class ResearchTrendMonitorDataLoader:
 _GRANTS_TREND_MONITOR_QUERY = """
     search grants
     where funder_org_countries.name = "Australia"
-    and (category_for.name @ "*urban*" or category_for.name @ "*planning*" or category_for.name @ "*geography*" or category_for.name @ "*geomatics*" or category_for.name @ "*demography*" or category_for.name @ "*sociology*")
+    and (
+        category_for.name @ "*urban*" or 
+        category_for.name @ "*planning*" or 
+        category_for.name @ "*geography*" or 
+        category_for.name @ "*geomatics*" or 
+        category_for.name @ "*demography*" or 
+        category_for.name @ "*sociology*" or
+        category_for.name @ "*community*" or
+        category_for.name @ "*geospatial*" or
+        category_for.name @ "*transport*" or
+        category_for.name @ "*city*" or
+        category_for.name @ "*regional*" or
+        category_for.name @ "*rural*" or
+        category_for.name @ "*housing*" or
+        category_for.name @ "*infrastructure*" or
+        category_for.name @ "*built*" or
+        category_for.name @ "*civil*" or
+        category_for.name @ "*asset management*" or
+        category_for.name @ "*population*" or
+        category_for.name @ "*social*" or
+        category_for.name @ "*economic*" or
+        category_for.name @ "*environment*" or
+        category_for.name @ "*ecological*" or
+        category_for.name @ "*ecology*" or
+        category_for.name @ "*natural hazards*" or
+        category_for.name @ "*hydrology*" or
+        category_for.name @ "*water*" or
+        category_for.name @ "*waste*" or
+        category_for.name @ "*mining*" or
+        category_for.name @ "*air quality*" or
+        category_for.name @ "*energy*" or
+        category_for.name @ "*sustainable*" or
+        category_for.name @ "*commerce*" or
+        category_for.name @ "*biodiversity*" or
+        category_for.name @ "*epidemiology*" or
+        category_for.name @ "*policy*" or
+        category_for.name @ "*inequalities*" or
+        category_for.name @ "*sustainability*" or
+        category_for.name @ "*sustainable*" or
+        category_for.name @ "*climate*" or
+        category_for.name @ "*health*" or
+        category_for.name @ "*photogrammetry*" or
+        category_for.name @ "*remote sensing*" or
+        category_for.name @ "*poverty*" or
+        category_for.name @ "*wellbeing*" or
+        category_for.name @ "*aboriginal*" or
+        category_for.name @ "*indigenous*" or
+        category_for.name @ "*torres strait islander*" or
+        category_for.name @ "*development*"
+        )
     return grants[id+title+start_date+end_date+funding_org_name+funding_usd+funder_countries+category_for+linkout]
 """
 
@@ -404,6 +548,10 @@ def _load_grant_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.DataFr
     Returns:
         DataFrame of grants or empty DataFrame on failure
     """
+    db = AurinDatabase()
+    if db.is_cached("grant_trend", TREND_FIXED, TREND_FIXED, max_age_days=7):
+        return db.read_table("grant_trend")
+
     try:
         if not _validate_api_key(api_key):
             return None
@@ -420,7 +568,10 @@ def _load_grant_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.DataFr
         )
         res = dsl.query_iterative(query)
         df = res.as_dataframe()
-        return df if df is not None and not df.empty else pd.DataFrame()
+        df = df if df is not None and not df.empty else pd.DataFrame()
+        if db.write_dataframe(df, "grant_trend"):
+            db.record_fetch("grant_trend", TREND_FIXED, TREND_FIXED, len(df))
+        return df
 
     except Exception as e:
         error_msg = str(e)

@@ -47,7 +47,7 @@ class GrantsComponent(BaseComponent):
 
         available_cols = [c for c in col_map if c in df.columns]
         if not available_cols:
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, width='stretch', hide_index=True)
             return
 
         display_df = df[available_cols].rename(columns=col_map)
@@ -84,7 +84,7 @@ class GrantsComponent(BaseComponent):
 
         st.dataframe(
             display_df,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config=column_config,
         )
