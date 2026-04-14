@@ -156,7 +156,10 @@ def _query_all_paginated(
         elapsed = time.time() - t0
 
         if res.errors:
-            break
+            raise CaptureError(
+                f"Dimensions API error (skip={skip}): "
+                + str(getattr(res, "errors_string", None) or res.errors)
+            )
 
         try:
             batch_df = res.as_dataframe()

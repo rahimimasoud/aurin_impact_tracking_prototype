@@ -76,6 +76,24 @@ def _deserialize_json_columns(df: pd.DataFrame, json_cols: List[str]) -> pd.Data
     return df
 
 
+def _auto_serialize_complex_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Serialize any column whose sampled values contain list or dict objects that
+    were not handled by the explicit JSON_COLUMNS registry.  SQLite cannot store
+    Python lists/dicts natively, so any remaining complex column must be
+    JSON-encoded before to_sql is called.
+    """
+    for col in df.columns:
+        sample = df[col].dropna().head(20)
+        if any(isinstance(v, (list, dict)) for v in sample):
+            df[col] = df[col].apply(
+                lambda v: json.dumps(v)
+                if v is not None and not (isinstance(v, float) and pd.isna(v))
+                else None
+            )
+    return df
+
+
 class AurinDatabase:
     """
     Thin SQLite wrapper providing schema initialisation, cache metadata
@@ -202,6 +220,7 @@ class AurinDatabase:
             return False
 
         df_out = _serialize_json_columns(df.copy(), JSON_COLUMNS.get(table_name, []))
+        df_out = _auto_serialize_complex_columns(df_out)
         try:
             with self._connect() as conn:
                 df_out.to_sql(table_name, conn, if_exists="replace", index=False)
@@ -227,6 +246,7 @@ class AurinDatabase:
             return False
 
         df_out = _serialize_json_columns(df.copy(), JSON_COLUMNS.get(table_name, []))
+        df_out = _auto_serialize_complex_columns(df_out)
         try:
             with self._connect() as conn:
                 try:
