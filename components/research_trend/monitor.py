@@ -91,14 +91,14 @@ class ResearchTrendMonitorComponent(BaseComponent):
 
         st.divider()
 
-        core_df = momentum_df.head(10).reset_index(drop=True)
-        top10_divisions = core_df["for_division"].tolist() if not core_df.empty else []
+        core_df = momentum_df.head(20).reset_index(drop=True)
+        top20_divisions = core_df["for_division"].tolist() if not core_df.empty else []
 
         # ── Section 3 ──────────────────────────────────────────────────
-        if top10_divisions:
+        if top20_divisions:
             render_keyword_trends(
                 df_exploded, self.publications_data,
-                top10_divisions, self._current_start,
+                top20_divisions, self._current_start,
             )
         else:
             st.info("No FOR fields found in the dataset — keyword analysis skipped.")

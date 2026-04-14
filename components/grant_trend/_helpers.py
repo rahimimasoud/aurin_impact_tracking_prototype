@@ -27,7 +27,7 @@ def extract_year(start_date) -> Optional[int]:
 def explode_with_year(df: pd.DataFrame) -> pd.DataFrame:
     """
     Explode category_for to one row per FOR item (filtered to FOR_TIERS),
-    returning columns: grant_id, year, for_name, for_division, funding_org_name, funding_usd.
+    returning columns: grant_id, year, for_name, for_division, funder_org_name, funding_usd.
     Year is derived from the start_date field.
     """
     if "category_for" not in df.columns:
@@ -40,7 +40,7 @@ def explode_with_year(df: pd.DataFrame) -> pd.DataFrame:
             continue
         year = extract_year(row.get("start_date"))
         grant_id = row.get("id", "")
-        funder = row.get("funding_org_name", "")
+        funder = row.get("funder_org_name", "")
         funding_usd = row.get("funding_usd", 0)
         for item in val:
             if isinstance(item, dict):
@@ -58,7 +58,7 @@ def explode_with_year(df: pd.DataFrame) -> pd.DataFrame:
                     "year":            year,
                     "for_name":        name,
                     "for_division":    division,
-                    "funding_org_name": funder,
+                    "funder_org_name": funder,
                     "funding_usd":     funding_usd,
                 })
 

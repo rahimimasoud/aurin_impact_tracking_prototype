@@ -36,10 +36,10 @@ JSON_COLUMNS: Dict[str, List[str]] = {
     "funders":          [],
     "investigators":    [],
     "policy_documents": ["publisher_org"],
-    "grants":           ["funder_countries"],
+    "grants":           ["funder_org_countries"],
     "patents":          ["assignees", "inventor_names"],
     "research_trend":   ["category_for", "concepts"],
-    "grant_trend":      ["funder_countries", "category_for"],
+    "grant_trend":      ["funder_org_countries", "category_for"],
 }
 
 _SCHEMA_SQL = """
@@ -205,6 +205,46 @@ class AurinDatabase:
         try:
             with self._connect() as conn:
                 df_out.to_sql(table_name, conn, if_exists="replace", index=False)
+            return True
+        except Exception:
+            return False
+
+    def upsert_dataframe(
+        self,
+        df: Optional[pd.DataFrame],
+        table_name: str,
+        id_column: str = "id",
+    ) -> bool:
+        """
+        Append only rows whose id_column value is not already present in table_name.
+
+        If the table does not yet exist, behaves identically to write_dataframe
+        (creates the table from scratch with all rows).
+
+        Returns True if any new rows were written, False otherwise.
+        """
+        if df is None or df.empty:
+            return False
+
+        df_out = _serialize_json_columns(df.copy(), JSON_COLUMNS.get(table_name, []))
+        try:
+            with self._connect() as conn:
+                try:
+                    existing_ids = set(
+                        pd.read_sql(f"SELECT {id_column} FROM [{table_name}]", conn)[id_column]
+                    )
+                except Exception:
+                    existing_ids = set()
+
+                new_rows = df_out[~df_out[id_column].isin(existing_ids)]
+                if new_rows.empty:
+                    return False
+                if not existing_ids:
+                    # Table is empty (or didn't exist): replace so the schema
+                    # is always up to date with whatever the API currently returns.
+                    new_rows.to_sql(table_name, conn, if_exists="replace", index=False)
+                else:
+                    new_rows.to_sql(table_name, conn, if_exists="append", index=False)
             return True
         except Exception:
             return False

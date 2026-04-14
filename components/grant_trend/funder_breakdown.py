@@ -1,7 +1,7 @@
 """
 Section 3 — Top Funders in Trending Fields.
 
-For each of the top 10 trending FOR fields, shows the leading funding
+For each of the top 20 trending FOR fields, shows the leading funding
 organisations by grant count and total funding in the current window.
 """
 from typing import List
@@ -14,13 +14,13 @@ from ._constants import FOR_TIERS, TIER_BADGE
 
 def render_funder_breakdown(
     df_exploded: pd.DataFrame,
-    top10_divisions: List[str],
+    top20_divisions: List[str],
     current_start: int,
 ) -> None:
     st.subheader("Top Funders in Trending Fields")
     st.caption(
         "Leading funding organisations within the current window "
-        "for the top 10 trending FOR fields."
+        "for the top 20 trending FOR fields."
     )
 
     if df_exploded.empty:
@@ -33,7 +33,7 @@ def render_funder_breakdown(
     df["year"] = df["year"].astype(int)
     df = df[df["year"] >= current_start]
 
-    for division in top10_divisions:
+    for division in top20_divisions:
         tier_info  = FOR_TIERS.get(division, {})
         field_name = tier_info.get("name", division)
         tier       = tier_info.get("tier", "Core")
@@ -46,7 +46,7 @@ def render_funder_breakdown(
 
         # Aggregate by funder
         funder_stats = (
-            df_field.groupby("funding_org_name")
+            df_field.groupby("funder_org_name")
             .agg(
                 grant_count=("grant_id", "nunique"),
                 total_usd=("funding_usd", "sum"),
@@ -56,8 +56,8 @@ def render_funder_breakdown(
             .reset_index()
         )
 
-        funder_stats = funder_stats[funder_stats["funding_org_name"].notna()]
-        funder_stats = funder_stats[funder_stats["funding_org_name"].str.strip() != ""]
+        funder_stats = funder_stats[funder_stats["funder_org_name"].notna()]
+        funder_stats = funder_stats[funder_stats["funder_org_name"].str.strip() != ""]
 
         if funder_stats.empty:
             st.info(f"No funder information available for **{field_name}**.")
@@ -76,7 +76,7 @@ def render_funder_breakdown(
             funder_rows_html.append(
                 f'<div style="margin-bottom:8px;">'
                 f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
-                f'<span style="font-size:12px;color:#374151;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{fr["funding_org_name"]}">{fr["funding_org_name"]}</span>'
+                f'<span style="font-size:12px;color:#374151;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{fr["funder_org_name"]}">{fr["funder_org_name"]}</span>'
                 f'<div style="display:flex;align-items:center;gap:8px;">'
                 f'<span style="font-size:11px;color:#6b7280;">{usd_str}</span>'
                 f'<span style="font-size:12px;font-weight:700;color:#111827;">{fr["grant_count"]:,}</span>'

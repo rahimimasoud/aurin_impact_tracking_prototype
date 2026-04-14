@@ -97,8 +97,8 @@ class AffiliatedOrganisationsComponent(BaseComponent):
             # Create expandable sections for top organizations
             st.subheader("🏆 Top Contributing Organizations")
             
-            # Show top 10 in expandable format
-            for i, (_, org) in enumerate(filtered_orgs.head(10).iterrows()):
+            # Show top 20 in expandable format
+            for i, (_, org) in enumerate(filtered_orgs.head(20).iterrows()):
                 with st.expander(f"#{i+1} {org['aff_name']} ({org['researcher_count']} unique researchers)"):
                     col1, col2, col3 = st.columns(3)
                     with col1:

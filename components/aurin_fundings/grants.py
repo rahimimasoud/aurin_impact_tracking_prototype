@@ -38,8 +38,8 @@ class GrantsComponent(BaseComponent):
             col_map["start_date"] = "Start Date"
         if "end_date" in df.columns:
             col_map["end_date"] = "End Date"
-        if "funding_org_name" in df.columns:
-            col_map["funding_org_name"] = "Funder"
+        if "funder_org_name" in df.columns:
+            col_map["funder_org_name"] = "Funder"
         if "funding_usd" in df.columns:
             col_map["funding_usd"] = "Funding (USD)"
         if "linkout" in df.columns:
@@ -54,7 +54,7 @@ class GrantsComponent(BaseComponent):
 
         # ── metrics ─────────────────────────────────────────────────────────
         total = len(df)
-        n_funders = df["funding_org_name"].nunique() if "funding_org_name" in df.columns else None
+        n_funders = df["funder_org_name"].nunique() if "funder_org_name" in df.columns else None
         total_funding = None
         if "funding_usd" in df.columns:
             funding_vals = pd.to_numeric(df["funding_usd"], errors="coerce").dropna()

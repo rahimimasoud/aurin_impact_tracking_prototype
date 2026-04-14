@@ -3,6 +3,10 @@ Sidebar component: hierarchical navigation + modal config dialog.
 """
 from components.base_component import BaseComponent
 import streamlit as st
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 IMPACT_METRICS_TABS = [
@@ -23,21 +27,32 @@ IMPACT_SPACE_TABS = [
 @st.dialog("⚙️ Configure Dashboard")
 def _show_config_dialog():
     """Modal dialog for entering API credentials and date range."""
-    api_key_input = st.text_input(
-        "Dimensions API Key",
-        type="password",
-        help="Enter your Dimensions API key to access the data",
-        placeholder="Enter your Dimensions API key here...",
-        value=st.session_state.get('api_key_input', '')
-    )
+    _env_dimensions = os.getenv('DIMENSIONS_API_KEY', '')
+    _env_gemini = os.getenv('GEMINI_API_KEY', '')
 
-    gemini_api_key_input = st.text_input(
-        "Gemini API Key (optional)",
-        type="password",
-        help="Enter your Google Gemini API key to enable AI summaries",
-        placeholder="Enter your Gemini API key here...",
-        value=st.session_state.get('gemini_api_key_input', '')
-    )
+    if _env_dimensions:
+        st.success("✅ Dimensions API key loaded from .env")
+        api_key_input = _env_dimensions
+    else:
+        api_key_input = st.text_input(
+            "Dimensions API Key",
+            type="password",
+            help="Enter your Dimensions API key to access the data",
+            placeholder="Enter your Dimensions API key here...",
+            value=st.session_state.get('api_key_input', '')
+        )
+
+    if _env_gemini:
+        st.success("✅ Gemini API key loaded from .env")
+        gemini_api_key_input = _env_gemini
+    else:
+        gemini_api_key_input = st.text_input(
+            "Gemini API Key (optional)",
+            type="password",
+            help="Enter your Google Gemini API key to enable AI summaries",
+            placeholder="Enter your Gemini API key here...",
+            value=st.session_state.get('gemini_api_key_input', '')
+        )
 
     with st.expander("📅 Date Range Filter"):
         st.info("Filter reports by date range (optional)")
@@ -59,15 +74,16 @@ def _show_config_dialog():
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🔑 Submit", type="primary", width='stretch'):
+        if st.button("🔄 Refresh Data", type="primary", width='stretch'):
             if not api_key_input:
-                st.error("❌ Please enter a Dimensions API key")
+                st.error("❌ DimensionsAPI key is required to refresh data")
             else:
                 st.session_state.api_key = api_key_input
                 st.session_state.api_key_input = api_key_input
                 if gemini_api_key_input:
                     st.session_state.gemini_api_key = gemini_api_key_input
                     st.session_state.gemini_api_key_input = gemini_api_key_input
+                st.session_state.refresh_requested = True
                 st.session_state.show_config = False
                 st.rerun()
     with col2:
@@ -96,7 +112,8 @@ class SidebarComponent(BaseComponent):
             'from_date': None,
             'to_date': None,
             'active_tab': 'ai_summary',
-            'show_config': True,
+            'show_config': False,
+            'refresh_requested': False,
         }
         for key, value in defaults.items():
             if key not in st.session_state:
@@ -139,10 +156,8 @@ class SidebarComponent(BaseComponent):
 
         if st.session_state.get('api_key'):
             st.sidebar.success("✅ Dimensions API key active")
-            if st.session_state.get('gemini_api_key'):
-                st.sidebar.success("✅ Gemini API key active")
-        else:
-            st.sidebar.info("Click Configure to enter your API key")
+        if st.session_state.get('gemini_api_key'):
+            st.sidebar.success("✅ Gemini API key active")
 
     def get_active_tab(self) -> str:
         return st.session_state.get('active_tab', 'research_papers')

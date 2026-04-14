@@ -15,13 +15,13 @@ from ._constants import FOR_TIERS, TIER_BADGE, KEYWORD_STOPWORDS
 def render_keyword_trends(
     df_exploded: pd.DataFrame,
     publications_data: pd.DataFrame,
-    top10_divisions: List[str],
+    top20_divisions: List[str],
     current_start: int,
 ) -> None:
     st.subheader("Emerging Keywords in Top Trending Fields")
     st.caption(
         "Most frequent research concepts within the current window "
-        "for the top 10 trending FOR fields."
+        "for the top 20 trending FOR fields."
     )
 
     if publications_data is None or publications_data.empty:
@@ -38,7 +38,7 @@ def render_keyword_trends(
     )
     df_pubs = df_pubs[df_pubs["year"] >= current_start]
 
-    for division in top10_divisions:
+    for division in top20_divisions:
         tier_info  = FOR_TIERS.get(division, {})
         field_name = tier_info.get("name", division)
         tier       = tier_info.get("tier", "Core")
