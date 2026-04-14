@@ -4,6 +4,7 @@ Provides abstract base class and concrete implementation for loading data from D
 """
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
+import time
 import streamlit as st
 import dimcli
 import pandas as pd
@@ -109,6 +110,130 @@ def build_query_with_dates(
     return final_query
 
 
+def _query_all_paginated(
+    dsl,
+    query: str,
+    limit: int = 1000,
+    fetch_sub_entities: bool = False,
+) -> dict:
+    """
+    Paginator that handles the Dimensions API's inconsistent total_count.
+
+    dimcli's query_iterative stops when it receives fewer than `limit` records
+    in a page, which causes premature termination when the API momentarily
+    underestimates its total — a known behaviour of distributed search clusters.
+
+    This function:
+    - Stops only when a page returns 0 records (truly exhausted)
+    - Tracks the highest total_count ever reported and retries empty pages up
+      to 3 times before giving up, in case the total temporarily dips below skip
+    - Deduplicates records by `id` across pages
+    - Optionally collects sub-entity frames (authors, affiliations, investigators)
+
+    Note: the Dimensions API hard-caps skip at 50,000 per query. For datasets
+    larger than that, split by year and call this function once per year.
+
+    Returns a dict with keys: 'main', 'authors', 'affiliations', 'investigators'.
+    """
+    seen_ids: set = set()
+    main_dfs, author_dfs, affil_dfs, invest_dfs = [], [], [], []
+    skip = 0
+    max_seen_total = 0
+    consecutive_empty = 0
+    MAX_CONSECUTIVE_EMPTY = 3
+    API_SKIP_CAP = 50_000
+
+    print(f"Starting iteration with limit={limit} skip=0 ...")
+
+    while skip < API_SKIP_CAP:
+        t0 = time.time()
+        q = query.rstrip() + f"\nlimit {limit} skip {skip}"
+        res = dsl.query(q)
+        elapsed = time.time() - t0
+
+        if res.errors:
+            break
+
+        try:
+            batch_df = res.as_dataframe()
+        except Exception:
+            break
+
+        # Track the highest total the API has ever reported for this query
+        try:
+            reported = int(res.stats.get("total_count", 0) or 0)
+            max_seen_total = max(max_seen_total, reported)
+        except (ValueError, TypeError):
+            pass
+
+        if batch_df is None or batch_df.empty:
+            # The API sometimes returns nothing when total_count dips below skip.
+            # Retry a few times before accepting this as the real end.
+            if skip < max_seen_total and consecutive_empty < MAX_CONSECUTIVE_EMPTY:
+                consecutive_empty += 1
+                print(f"[Retry {consecutive_empty}/{MAX_CONSECUTIVE_EMPTY}] empty at skip={skip}, max seen total={max_seen_total}")
+                time.sleep(2)
+                continue
+            break
+
+        consecutive_empty = 0
+        batch_size = len(batch_df)
+        print(f"{skip}-{skip + batch_size} / {max_seen_total or '?'} ({elapsed:.2f}s)")
+
+        if "id" in batch_df.columns:
+            new_rows = batch_df[~batch_df["id"].isin(seen_ids)]
+            seen_ids.update(batch_df["id"].tolist())
+        else:
+            new_rows = batch_df
+
+        if not new_rows.empty:
+            main_dfs.append(new_rows)
+
+        if fetch_sub_entities:
+            for method_name, target in [
+                ("as_dataframe_authors", author_dfs),
+                ("as_dataframe_authors_affiliations", affil_dfs),
+                ("as_dataframe_investigators", invest_dfs),
+            ]:
+                fn = getattr(res, method_name, None)
+                if fn is not None:
+                    try:
+                        sub_df = fn()
+                        if sub_df is not None and not sub_df.empty:
+                            target.append(sub_df)
+                    except Exception:
+                        pass
+
+        skip += batch_size
+
+    final_main = pd.concat(main_dfs, ignore_index=True) if main_dfs else pd.DataFrame()
+    final_ids = set(final_main["id"].tolist()) if "id" in final_main.columns else None
+
+    def _build_sub(dfs, pub_id_col="pub_id"):
+        if not dfs:
+            return None
+        df = pd.concat(dfs, ignore_index=True)
+        if final_ids is not None and pub_id_col in df.columns:
+            df = df[df[pub_id_col].isin(final_ids)]
+        try:
+            return df.drop_duplicates()
+        except TypeError:
+            # Some columns (e.g. 'affiliations') contain lists which are not hashable.
+            # Deduplicate only on columns whose sampled values are all scalar.
+            safe_cols = [
+                c for c in df.columns
+                if not any(isinstance(v, (list, dict)) for v in df[c].dropna().head(20))
+            ]
+            return df.drop_duplicates(subset=safe_cols) if safe_cols else df
+
+    return {
+        "main": final_main,
+        "authors": _build_sub(author_dfs),
+        "affiliations": _build_sub(affil_dfs),
+        "investigators": _build_sub(invest_dfs),
+    }
+
+
 @st.cache_data
 def _load_dimensions_data(api_key: str, endpoint: str, query: str, from_date: Optional[str] = None, to_date: Optional[str] = None) -> Tuple[Optional[pd.DataFrame], ...]:
     """
@@ -143,13 +268,13 @@ def _load_dimensions_data(api_key: str, endpoint: str, query: str, from_date: Op
         dsl = dimcli.Dsl()
         
         # Build query with date filters if provided
-        final_query = build_query_with_dates(query, from_date, to_date)    
-        res_aurin = dsl.query_iterative(final_query)
-        df_aurin_main = res_aurin.as_dataframe()
-        df_authors = res_aurin.as_dataframe_authors()
-        df_affiliations = res_aurin.as_dataframe_authors_affiliations()
+        final_query = build_query_with_dates(query, from_date, to_date)
+        result = _query_all_paginated(dsl, final_query, fetch_sub_entities=True)
+        df_aurin_main = result["main"]
+        df_authors = result["authors"]
+        df_affiliations = result["affiliations"]
         df_funders = None
-        df_investigators = res_aurin.as_dataframe_investigators()
+        df_investigators = result["investigators"]
         
         # Join times_cited from df_aurin_main to df_affiliations
         # Join on pub_id (df_affiliations) and id (df_aurin_main)
@@ -225,8 +350,7 @@ def _load_policy_documents(api_key: str, endpoint: str, from_date: Optional[str]
         dimcli.login(key=api_key, endpoint=endpoint)
         dsl = dimcli.Dsl()
         query = build_query_with_dates(_POLICY_QUERY, from_date, to_date, date_field="year", year_only=True)
-        res = dsl.query_iterative(query)
-        df = res.as_dataframe()
+        df = _query_all_paginated(dsl, query)["main"]
         df = df if df is not None and not df.empty else pd.DataFrame()
         if db.write_dataframe(df, "policy_documents"):
             db.record_fetch("policy_documents", from_date, to_date, len(df))
@@ -253,7 +377,7 @@ class PolicyDocumentsDataLoader:
 
 _GRANTS_QUERY = f"""
     search grants for {_AURIN_SEARCH_TERMS}
-    return grants[id+title+start_date+end_date+funding_org_name+funding_usd+funder_countries+linkout]
+    return grants[id+title+start_date+end_date+funder_org_name+funding_usd+funder_org_countries+linkout]
 """
 
 
@@ -282,8 +406,7 @@ def _load_grants(api_key: str, endpoint: str, from_date: Optional[str] = None, t
         dimcli.login(key=api_key, endpoint=endpoint)
         dsl = dimcli.Dsl()
         query = build_query_with_dates(_GRANTS_QUERY, from_date, to_date, date_field="start_date")
-        res = dsl.query_iterative(query)
-        df = res.as_dataframe()
+        df = _query_all_paginated(dsl, query)["main"]
         df = df if df is not None and not df.empty else pd.DataFrame()
         if db.write_dataframe(df, "grants"):
             db.record_fetch("grants", from_date, to_date, len(df))
@@ -339,8 +462,7 @@ def _load_patents(api_key: str, endpoint: str, from_date: Optional[str] = None, 
         dimcli.login(key=api_key, endpoint=endpoint)
         dsl = dimcli.Dsl()
         query = build_query_with_dates(_PATENTS_QUERY, from_date, to_date, date_field="publication_date")
-        res = dsl.query_iterative(query)
-        df = res.as_dataframe()
+        df = _query_all_paginated(dsl, query)["main"]
         df = df if df is not None and not df.empty else pd.DataFrame()
         if db.write_dataframe(df, "patents"):
             db.record_fetch("patents", from_date, to_date, len(df))
@@ -365,60 +487,32 @@ class PatentsDataLoader:
         return _load_patents(api_key, self.endpoint, from_date, to_date)
 
 
-_PUBLICATIONS_TREND_MONITOR_QUERY = """
-    search publications
-    where research_org_country_names = "Australia"
-    and (
-        category_for.name @ "*urban*" or 
-        category_for.name @ "*planning*" or 
-        category_for.name @ "*geography*" or 
-        category_for.name @ "*geomatics*" or 
-        category_for.name @ "*demography*" or 
-        category_for.name @ "*sociology*" or
-        category_for.name @ "*community*" or
-        category_for.name @ "*geospatial*" or
-        category_for.name @ "*transport*" or
-        category_for.name @ "*city*" or
-        category_for.name @ "*regional*" or
-        category_for.name @ "*rural*" or
-        category_for.name @ "*housing*" or
-        category_for.name @ "*infrastructure*" or
-        category_for.name @ "*built*" or
-        category_for.name @ "*civil*" or
-        category_for.name @ "*asset management*" or
-        category_for.name @ "*population*" or
-        category_for.name @ "*social*" or
-        category_for.name @ "*economic*" or
-        category_for.name @ "*environment*" or
-        category_for.name @ "*ecological*" or
-        category_for.name @ "*ecology*" or
-        category_for.name @ "*natural hazards*" or
-        category_for.name @ "*hydrology*" or
-        category_for.name @ "*water*" or
-        category_for.name @ "*waste*" or
-        category_for.name @ "*mining*" or
-        category_for.name @ "*air quality*" or
-        category_for.name @ "*energy*" or
-        category_for.name @ "*sustainable*" or
-        category_for.name @ "*commerce*" or
-        category_for.name @ "*biodiversity*" or
-        category_for.name @ "*epidemiology*" or
-        category_for.name @ "*policy*" or
-        category_for.name @ "*inequalities*" or
-        category_for.name @ "*sustainability*" or
-        category_for.name @ "*sustainable*" or
-        category_for.name @ "*climate*" or
-        category_for.name @ "*health*" or
-        category_for.name @ "*photogrammetry*" or
-        category_for.name @ "*remote sensing*" or
-        category_for.name @ "*poverty*" or
-        category_for.name @ "*wellbeing*" or
-        category_for.name @ "*aboriginal*" or
-        category_for.name @ "*indigenous*" or
-        category_for.name @ "*torres strait islander*" or
-        category_for.name @ "*development*"
-        )
-    return publications[id+year+category_for+concepts]
+# Shared FOR category terms used for both publications and grants trend queries.
+# Kept as a list so loaders can chunk them and stay within the Dimensions API
+# complexity limit (~12 conditions per query avoids the "too long or complex" warning).
+_TREND_FOR_CATEGORIES = [
+    "urban", "planning", "geography", "geomatics", "demography",
+    "sociology", "community", "geospatial", "transport", "city",
+    "regional", "rural", "housing", "infrastructure", "built",
+    "civil", "asset management", "population", "social", "economic",
+    "environment", "ecological", "ecology", "natural hazards",
+    "hydrology", "water", "waste", "mining", "air quality", "energy",
+    "sustainable", "sustainability", "commerce", "biodiversity", "epidemiology",
+    "policy", "inequalities", "climate", "health", "photogrammetry",
+    "remote sensing", "poverty", "wellbeing", "aboriginal", "indigenous",
+    "torres strait islander", "development",
+]
+
+_TREND_CHUNK_SIZE = 12
+
+
+def _build_trend_query(entity: str, where_country: str, return_fields: str, terms: list) -> str:
+    """Build a trend DSL query for a subset of FOR category wildcard terms."""
+    conditions = " or\n        ".join(f'category_for.name @ "*{t}*"' for t in terms)
+    return f"""    search {entity}
+    where {where_country}
+    and ({conditions})
+    return {entity}[{return_fields}]
 """
 
 
@@ -446,16 +540,36 @@ def _load_research_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.Dat
         import datetime
         current_year = datetime.datetime.now().year
         from_year = current_year - 10  # 10-year window (inclusive)
-        from_date = f"{from_year}-01-01"
+        years = list(range(from_year, current_year + 1))
 
         dimcli.login(key=api_key, endpoint=endpoint)
         dsl = dimcli.Dsl()
-        query = build_query_with_dates(
-            _PUBLICATIONS_TREND_MONITOR_QUERY, from_date, to_date=None, date_field="year", year_only=True
-        )
-        res = dsl.query_iterative(query)
-        df = res.as_dataframe()
-        df = df if df is not None and not df.empty else pd.DataFrame()
+
+        chunks = [
+            _TREND_FOR_CATEGORIES[i:i + _TREND_CHUNK_SIZE]
+            for i in range(0, len(_TREND_FOR_CATEGORIES), _TREND_CHUNK_SIZE)
+        ]
+        total_steps = len(years) * len(chunks)
+        step = 0
+        all_dfs = []
+        progress = st.progress(0, text="Loading research trend data…")
+        for year in years:
+            for chunk in chunks:
+                progress.progress(step / total_steps, text=f"Loading research trends: {year}…")
+                query = _build_trend_query(
+                    "publications",
+                    'research_org_country_names = "Australia"',
+                    "id+year+category_for+concepts",
+                    chunk,
+                )
+                query = build_query_with_dates(query, str(year), str(year), "year", year_only=True)
+                chunk_df = _query_all_paginated(dsl, query)["main"]
+                if chunk_df is not None and not chunk_df.empty:
+                    all_dfs.append(chunk_df)
+                step += 1
+        progress.empty()
+
+        df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset="id") if all_dfs else pd.DataFrame()
         if db.write_dataframe(df, "research_trend"):
             db.record_fetch("research_trend", TREND_FIXED, TREND_FIXED, len(df))
         return df
@@ -478,62 +592,6 @@ class ResearchTrendMonitorDataLoader:
     def load_data(self, api_key: str, **kwargs) -> Optional[pd.DataFrame]:
         return _load_research_trend_monitor(api_key, self.endpoint)
 
-
-_GRANTS_TREND_MONITOR_QUERY = """
-    search grants
-    where funder_org_countries.name = "Australia"
-    and (
-        category_for.name @ "*urban*" or 
-        category_for.name @ "*planning*" or 
-        category_for.name @ "*geography*" or 
-        category_for.name @ "*geomatics*" or 
-        category_for.name @ "*demography*" or 
-        category_for.name @ "*sociology*" or
-        category_for.name @ "*community*" or
-        category_for.name @ "*geospatial*" or
-        category_for.name @ "*transport*" or
-        category_for.name @ "*city*" or
-        category_for.name @ "*regional*" or
-        category_for.name @ "*rural*" or
-        category_for.name @ "*housing*" or
-        category_for.name @ "*infrastructure*" or
-        category_for.name @ "*built*" or
-        category_for.name @ "*civil*" or
-        category_for.name @ "*asset management*" or
-        category_for.name @ "*population*" or
-        category_for.name @ "*social*" or
-        category_for.name @ "*economic*" or
-        category_for.name @ "*environment*" or
-        category_for.name @ "*ecological*" or
-        category_for.name @ "*ecology*" or
-        category_for.name @ "*natural hazards*" or
-        category_for.name @ "*hydrology*" or
-        category_for.name @ "*water*" or
-        category_for.name @ "*waste*" or
-        category_for.name @ "*mining*" or
-        category_for.name @ "*air quality*" or
-        category_for.name @ "*energy*" or
-        category_for.name @ "*sustainable*" or
-        category_for.name @ "*commerce*" or
-        category_for.name @ "*biodiversity*" or
-        category_for.name @ "*epidemiology*" or
-        category_for.name @ "*policy*" or
-        category_for.name @ "*inequalities*" or
-        category_for.name @ "*sustainability*" or
-        category_for.name @ "*sustainable*" or
-        category_for.name @ "*climate*" or
-        category_for.name @ "*health*" or
-        category_for.name @ "*photogrammetry*" or
-        category_for.name @ "*remote sensing*" or
-        category_for.name @ "*poverty*" or
-        category_for.name @ "*wellbeing*" or
-        category_for.name @ "*aboriginal*" or
-        category_for.name @ "*indigenous*" or
-        category_for.name @ "*torres strait islander*" or
-        category_for.name @ "*development*"
-        )
-    return grants[id+title+start_date+end_date+funding_org_name+funding_usd+funder_countries+category_for+linkout]
-"""
 
 @st.cache_data
 def _load_grant_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.DataFrame]:
@@ -559,16 +617,36 @@ def _load_grant_trend_monitor(api_key: str, endpoint: str) -> Optional[pd.DataFr
         import datetime
         current_year = datetime.datetime.now().year
         from_year = current_year - 10
-        from_date = f"{from_year}-01-01"
+        years = list(range(from_year, current_year + 1))
 
         dimcli.login(key=api_key, endpoint=endpoint)
         dsl = dimcli.Dsl()
-        query = build_query_with_dates(
-            _GRANTS_TREND_MONITOR_QUERY, from_date, to_date=None, date_field="start_date"
-        )
-        res = dsl.query_iterative(query)
-        df = res.as_dataframe()
-        df = df if df is not None and not df.empty else pd.DataFrame()
+
+        chunks = [
+            _TREND_FOR_CATEGORIES[i:i + _TREND_CHUNK_SIZE]
+            for i in range(0, len(_TREND_FOR_CATEGORIES), _TREND_CHUNK_SIZE)
+        ]
+        total_steps = len(years) * len(chunks)
+        step = 0
+        all_dfs = []
+        progress = st.progress(0, text="Loading grant trend data…")
+        for year in years:
+            for chunk in chunks:
+                progress.progress(step / total_steps, text=f"Loading grant trends: {year}…")
+                query = _build_trend_query(
+                    "grants",
+                    'funder_org_countries.name = "Australia"',
+                    "id+title+start_date+end_date+funder_org_name+funding_usd+funder_org_countries+category_for+linkout",
+                    chunk,
+                )
+                query = build_query_with_dates(query, f"{year}-01-01", f"{year}-12-31", "start_date")
+                chunk_df = _query_all_paginated(dsl, query)["main"]
+                if chunk_df is not None and not chunk_df.empty:
+                    all_dfs.append(chunk_df)
+                step += 1
+        progress.empty()
+
+        df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset="id") if all_dfs else pd.DataFrame()
         if db.write_dataframe(df, "grant_trend"):
             db.record_fetch("grant_trend", TREND_FIXED, TREND_FIXED, len(df))
         return df

@@ -68,8 +68,8 @@ class ImpactContext:
         counts = pd.Series(rows).value_counts()
         lines.append("\n## Field of Research (FOR) Categories")
         lines.append(f"- Total distinct FOR categories: {len(counts)}")
-        lines.append("- Top 10 categories by paper count:")
-        for cat, count in counts.head(10).items():
+        lines.append("- Top 20 categories by paper count:")
+        for cat, count in counts.head(20).items():
             lines.append(f"  • {cat}: {count} papers")
         return lines
 
@@ -161,9 +161,9 @@ class ImpactContext:
         df = self.grants_data
         lines.append("\n## AURIN Fundings / Grants")
         lines.append(f"- Total grants: {len(df)}")
-        if "funding_org_name" in df.columns:
-            lines.append(f"- Distinct funders: {df['funding_org_name'].nunique()}")
-            top_funders = df["funding_org_name"].value_counts().head(5)
+        if "funder_org_name" in df.columns:
+            lines.append(f"- Distinct funders: {df['funder_org_name'].nunique()}")
+            top_funders = df["funder_org_name"].value_counts().head(5)
             lines.append("- Top funders:")
             for funder, count in top_funders.items():
                 lines.append(f"  • {funder}: {count}")

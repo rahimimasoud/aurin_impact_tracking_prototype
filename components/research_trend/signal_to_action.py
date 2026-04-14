@@ -8,14 +8,14 @@ import pandas as pd
 import streamlit as st
 
 
-def render_signal_to_action(top10_rows: pd.DataFrame) -> None:
+def render_signal_to_action(top20_rows: pd.DataFrame) -> None:
     st.subheader("Signal-to-Action")
     st.caption(
         "Recommended actions for AURIN based on momentum signals "
-        "in the top 10 trending Core FOR fields."
+        "in the top 20 trending Core FOR fields."
     )
 
-    for _, row in top10_rows.iterrows():
+    for _, row in top20_rows.iterrows():
         momentum = row["momentum_pct"]
 
         if momentum > 30:

@@ -66,16 +66,16 @@ def render_trending_cards(
     st.caption(
         f"Publication momentum: current window {current_start}–{current_end} "
         f"vs prior window {prior_start}–{prior_end}. "
-        "Top 10 FOR fields by momentum score."
+        "Top 20 FOR fields by momentum score."
     )
 
-    top10 = momentum_df.head(10).reset_index(drop=True)
-    if top10.empty:
+    top20 = momentum_df.head(20).reset_index(drop=True)
+    if top20.empty:
         st.warning("Insufficient data to compute momentum scores.")
         return
 
     cols = st.columns(2)
-    for i, row in top10.iterrows():
+    for i, row in top20.iterrows():
         tier     = row["tier"]
         badge    = TIER_BADGE.get(tier, TIER_BADGE["Contextual"])
         momentum = row["momentum_pct"]
