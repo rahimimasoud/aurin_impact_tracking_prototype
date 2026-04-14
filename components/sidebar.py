@@ -2,12 +2,8 @@
 Sidebar component: hierarchical navigation + modal config dialog.
 """
 from components.base_component import BaseComponent
+from components._constants import _ENV_DIMENSIONS, _ENV_GEMINI
 import streamlit as st
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
 
 IMPACT_METRICS_TABS = [
     ("🤖 AI Summary", "ai_summary"),
@@ -27,12 +23,11 @@ IMPACT_SPACE_TABS = [
 @st.dialog("⚙️ Configure Dashboard")
 def _show_config_dialog():
     """Modal dialog for entering API credentials and date range."""
-    _env_dimensions = os.getenv('DIMENSIONS_API_KEY', '')
-    _env_gemini = os.getenv('GEMINI_API_KEY', '')
 
-    if _env_dimensions:
+
+    if _ENV_DIMENSIONS:
         st.success("✅ Dimensions API key loaded from .env")
-        api_key_input = _env_dimensions
+        api_key_input = _ENV_DIMENSIONS
     else:
         api_key_input = st.text_input(
             "Dimensions API Key",
@@ -42,9 +37,9 @@ def _show_config_dialog():
             value=st.session_state.get('api_key_input', '')
         )
 
-    if _env_gemini:
+    if _ENV_GEMINI:
         st.success("✅ Gemini API key loaded from .env")
-        gemini_api_key_input = _env_gemini
+        gemini_api_key_input = _ENV_GEMINI
     else:
         gemini_api_key_input = st.text_input(
             "Gemini API Key (optional)",

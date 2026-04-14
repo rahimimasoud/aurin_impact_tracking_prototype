@@ -4,6 +4,7 @@ This file orchestrates all components and data loading.
 """
 import streamlit as st
 
+from components._constants import _ENV_DIMENSIONS, _ENV_GEMINI
 from data_loader import DimensionsDataLoader, PolicyDocumentsDataLoader, GrantsDataLoader, PatentsDataLoader, ResearchTrendMonitorDataLoader, GrantTrendMonitorDataLoader
 from data.capture import DataCapture, CaptureError
 from data import AurinDatabase
@@ -38,6 +39,8 @@ st.set_page_config(
 # Initialize components
 sidebar = SidebarComponent()
 header = HeaderComponent()
+st.session_state.api_key = _ENV_DIMENSIONS if _ENV_DIMENSIONS else None
+st.session_state.gemini_api_key = _ENV_GEMINI if _ENV_GEMINI else None
 
 # Sidebar: navigation + config
 sidebar.render()

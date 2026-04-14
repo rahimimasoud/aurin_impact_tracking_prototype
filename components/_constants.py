@@ -2,7 +2,14 @@
 Shared constants across all trend monitor components:
 FOR tier definitions, badge styles, momentum colours, and keyword stopwords.
 """
+import os
 from typing import Dict
+
+from dotenv import load_dotenv
+
+load_dotenv()
+_ENV_DIMENSIONS: str = os.getenv('DIMENSIONS_API_KEY', '')
+_ENV_GEMINI: str = os.getenv('GEMINI_API_KEY', '')
 
 # ANZSRC 2020 FOR codes — urban research domain, structured by relevance tier
 FOR_TIERS: Dict[str, Dict] = {
