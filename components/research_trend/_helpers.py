@@ -23,32 +23,28 @@ def explode_with_year(df: pd.DataFrame) -> pd.DataFrame:
     if "category_for" not in df.columns:
         return pd.DataFrame()
 
-    rows = []
-    for _, row in df.iterrows():
-        val = row.get("category_for")
-        if not isinstance(val, list):
-            continue
-        year = row.get("year")
-        pub_id = row.get("id", "")
-        for item in val:
-            if isinstance(item, dict):
-                name = item.get("name") or item.get("id", "")
-            elif isinstance(item, str):
-                name = item
-            else:
-                continue
-            if not name:
-                continue
-            division = for_division(name)
-            if division and division in FOR_TIERS:
-                rows.append({
-                    "pub_id":       pub_id,
-                    "year":         year,
-                    "for_name":     name,
-                    "for_division": division,
-                })
+    df_work = df[["id", "year", "category_for"]].copy()
+    df_work = df_work[df_work["category_for"].apply(lambda x: isinstance(x, list))]
+    if df_work.empty:
+        return pd.DataFrame()
 
-    return pd.DataFrame(rows) if rows else pd.DataFrame()
+    df_work = df_work.explode("category_for").dropna(subset=["category_for"])
+
+    def _extract_name(item):
+        if isinstance(item, dict):
+            return item.get("name") or item.get("id") or ""
+        return item if isinstance(item, str) else ""
+
+    df_work["for_name"] = df_work["category_for"].apply(_extract_name)
+    df_work = df_work[df_work["for_name"] != ""]
+    df_work["for_division"] = df_work["for_name"].str.extract(r"^(\d{4})", expand=False)
+    df_work = df_work[df_work["for_division"].isin(FOR_TIERS)]
+
+    return (
+        df_work.rename(columns={"id": "pub_id"})
+        [["pub_id", "year", "for_name", "for_division"]]
+        .reset_index(drop=True)
+    )
 
 
 def compute_momentum(

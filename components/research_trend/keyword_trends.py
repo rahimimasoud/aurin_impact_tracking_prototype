@@ -32,11 +32,29 @@ def render_keyword_trends(
         st.info("Concept/keyword data is not available in this dataset.")
         return
 
-    df_pubs = publications_data.copy()
-    df_pubs["year"] = pd.to_numeric(
-        df_pubs.get("year", pd.Series(dtype=float)), errors="coerce"
-    )
-    df_pubs = df_pubs[df_pubs["year"] >= current_start]
+    # Pre-explode concepts once for all divisions so the loop is a fast vectorised filter.
+    df_pubs = publications_data[["id", "concepts"]].copy()
+    df_pubs = df_pubs[df_pubs["concepts"].apply(lambda x: isinstance(x, list))]
+    df_pubs = df_pubs.explode("concepts").dropna(subset=["concepts"])
+
+    def _concept_str(c) -> str:
+        if isinstance(c, dict):
+            return (c.get("concept") or c.get("name") or c.get("id") or "").strip().lower()
+        return c.strip().lower() if isinstance(c, str) else ""
+
+    df_pubs["concept"] = df_pubs["concepts"].apply(_concept_str)
+    df_pubs = df_pubs[
+        (df_pubs["concept"].str.len() > 2) &
+        (~df_pubs["concept"].isin(KEYWORD_STOPWORDS))
+    ]
+
+    # Filter to publications within the current window using df_exploded year data,
+    # since the concepts DataFrame no longer carries a 'year' column.
+    df_exploded_current = df_exploded[
+        pd.to_numeric(df_exploded["year"], errors="coerce") >= current_start
+    ]
+    current_window_ids = set(df_exploded_current["pub_id"].unique())
+    df_pubs = df_pubs[df_pubs["id"].isin(current_window_ids)]
 
     for division in top20_divisions:
         tier_info  = FOR_TIERS.get(division, {})
@@ -47,26 +65,11 @@ def render_keyword_trends(
         matching_ids = set(
             df_exploded[df_exploded["for_division"] == division]["pub_id"].unique()
         )
-        if "id" in df_pubs.columns:
-            df_field = df_pubs[df_pubs["id"].isin(matching_ids)]
-        else:
-            df_field = df_pubs
-
-        concept_counts: Dict[str, int] = {}
-        for _, row in df_field.iterrows():
-            concepts = row.get("concepts")
-            if not isinstance(concepts, list):
-                continue
-            for c in concepts:
-                if isinstance(c, dict):
-                    concept = c.get("concept") or c.get("name") or c.get("id", "")
-                elif isinstance(c, str):
-                    concept = c
-                else:
-                    continue
-                concept = concept.strip().lower()
-                if concept and len(concept) > 2 and concept not in KEYWORD_STOPWORDS:
-                    concept_counts[concept] = concept_counts.get(concept, 0) + 1
+        concept_counts: Dict[str, int] = (
+            df_pubs[df_pubs["id"].isin(matching_ids)]["concept"]
+            .value_counts()
+            .to_dict()
+        )
 
         if not concept_counts:
             st.info(f"No concept data found for **{field_name}**.")

@@ -68,7 +68,17 @@ def _load_patents(
 
 @st.cache_data
 def _load_research_trend_monitor() -> pd.DataFrame:
-    return AurinDatabase().read_table("research_trend")
+    # Intentionally excludes 'concepts' — sections 1, 2, and 4 don't need it.
+    # Use _load_research_trend_concepts() to fetch concepts lazily for section 3.
+    return AurinDatabase().read_table(
+        "research_trend", columns=["id", "year", "category_for"]
+    )
+
+
+@st.cache_data
+def _load_research_trend_concepts() -> pd.DataFrame:
+    """Load only id + concepts from research_trend for the keyword-trends section."""
+    return AurinDatabase().read_table("research_trend", columns=["id", "concepts"])
 
 
 @st.cache_data

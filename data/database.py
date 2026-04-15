@@ -191,18 +191,33 @@ class AurinDatabase:
     # DataFrame I/O
     # ------------------------------------------------------------------
 
-    def read_table(self, table_name: str) -> pd.DataFrame:
+    def read_table(
+        self,
+        table_name: str,
+        columns: Optional[List[str]] = None,
+    ) -> pd.DataFrame:
         """
-        Read an entire data table into a DataFrame, deserialising JSON columns.
+        Read a data table into a DataFrame, deserialising JSON columns.
         Returns an empty DataFrame if the table does not exist or has no rows.
+
+        Args:
+            table_name: Name of the SQLite table to read.
+            columns: Optional list of column names to SELECT. When None (default),
+                     all columns are returned (SELECT *). Passing a subset avoids
+                     loading and deserialising heavy JSON columns that are not needed.
         """
+        col_expr = ", ".join(f'"{c}"' for c in columns) if columns else "*"
         try:
             with self._connect() as conn:
-                df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
+                df = pd.read_sql(f"SELECT {col_expr} FROM [{table_name}]", conn)
         except Exception:
             return pd.DataFrame()
 
-        return _deserialize_json_columns(df, JSON_COLUMNS.get(table_name, []))
+        active_json = [
+            c for c in JSON_COLUMNS.get(table_name, [])
+            if columns is None or c in columns
+        ]
+        return _deserialize_json_columns(df, active_json)
 
     def write_dataframe(self, df: Optional[pd.DataFrame], table_name: str) -> bool:
         """

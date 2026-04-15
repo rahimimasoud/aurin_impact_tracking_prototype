@@ -22,6 +22,13 @@ from .trending_cards import render_trending_cards
 from .top_categories import render_top_categories_by_volume
 from .keyword_trends import render_keyword_trends
 from .signal_to_action import render_signal_to_action
+from data_loader import _load_research_trend_monitor, _load_research_trend_concepts
+
+
+@st.cache_data
+def _cached_explode() -> pd.DataFrame:
+    """Load and explode the research trend DataFrame, cached across Streamlit reruns."""
+    return explode_with_year(_load_research_trend_monitor())
 
 
 class ResearchTrendMonitorComponent(BaseComponent):
@@ -60,7 +67,7 @@ class ResearchTrendMonitorComponent(BaseComponent):
             )
             return
 
-        df_exploded = explode_with_year(self.publications_data)
+        df_exploded = _cached_explode()
         if df_exploded.empty:
             st.warning("No FOR classification data found in the publications dataset.")
             return
@@ -96,8 +103,9 @@ class ResearchTrendMonitorComponent(BaseComponent):
 
         # ── Section 3 ──────────────────────────────────────────────────
         if top20_divisions:
+            concepts_df = _load_research_trend_concepts()
             render_keyword_trends(
-                df_exploded, self.publications_data,
+                df_exploded, concepts_df,
                 top20_divisions, self._current_start,
             )
         else:
