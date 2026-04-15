@@ -463,6 +463,25 @@ class DataCapture:
             total = len(db.read_table("research_trend"))
             db.record_fetch("research_trend", TREND_FIXED, TREND_FIXED, total)
 
+        progress_callback(1.0, "Pre-computing research trend index…")
+        df_raw = db.read_table("research_trend", columns=["id", "year", "category_for"])
+        if not df_raw.empty and "category_for" in df_raw.columns:
+            df_raw = df_raw[df_raw["category_for"].apply(lambda x: isinstance(x, list))]
+            df_expl = df_raw.explode("category_for").dropna(subset=["category_for"])
+            df_expl["for_name"] = df_expl["category_for"].apply(
+                lambda x: (x.get("name") or x.get("id") or "") if isinstance(x, dict)
+                else (x if isinstance(x, str) else "")
+            )
+            df_expl = df_expl[df_expl["for_name"] != ""]
+            df_expl["for_division"] = df_expl["for_name"].str.extract(r"^(\d{4})", expand=False)
+            df_expl = df_expl.dropna(subset=["for_division"])
+            df_expl = (
+                df_expl.rename(columns={"id": "pub_id"})
+                [["pub_id", "year", "for_name", "for_division"]]
+                .reset_index(drop=True)
+            )
+            db.write_dataframe(df_expl, "research_trend_exploded")
+
     def _capture_grant_trend(
         self,
         db: AurinDatabase,

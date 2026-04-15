@@ -22,12 +22,25 @@ from .trending_cards import render_trending_cards
 from .top_categories import render_top_categories_by_volume
 from .keyword_trends import render_keyword_trends
 from .signal_to_action import render_signal_to_action
-from data_loader import _load_research_trend_monitor, _load_research_trend_concepts
+from data_loader import (
+    _load_research_trend_monitor,
+    _load_research_trend_concepts,
+    _load_research_trend_exploded,
+)
+from ._constants import FOR_TIERS
 
 
 @st.cache_data
 def _cached_explode() -> pd.DataFrame:
-    """Load and explode the research trend DataFrame, cached across Streamlit reruns."""
+    """Load and explode the research trend DataFrame, cached across Streamlit reruns.
+
+    Fast path: reads the pre-exploded table built during data capture (flat strings,
+    no JSON deserialisation). Falls back to the original on-demand explosion if the
+    pre-exploded table does not yet exist (i.e. before the first re-capture).
+    """
+    df = _load_research_trend_exploded()
+    if not df.empty:
+        return df[df["for_division"].isin(FOR_TIERS)].reset_index(drop=True)
     return explode_with_year(_load_research_trend_monitor())
 
 

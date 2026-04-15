@@ -82,6 +82,13 @@ def _load_research_trend_concepts() -> pd.DataFrame:
 
 
 @st.cache_data
+def _load_research_trend_exploded() -> pd.DataFrame:
+    """Load the pre-exploded research trend table (pub_id, year, for_name, for_division).
+    Populated during data capture; empty if capture has not been run yet."""
+    return AurinDatabase().read_table("research_trend_exploded")
+
+
+@st.cache_data
 def _load_grant_trend_monitor() -> pd.DataFrame:
     return AurinDatabase().read_table("grant_trend")
 
