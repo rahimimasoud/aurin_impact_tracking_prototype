@@ -32,8 +32,18 @@ def render_keyword_trends(
         st.info("Concept/keyword data is not available in this dataset.")
         return
 
-    # Pre-explode concepts once for all divisions so the loop is a fast vectorised filter.
+    # Compute the current-window ID set FIRST so we can filter before exploding.
+    # Exploding all concepts for all publications is the primary OOM risk on cloud:
+    # with 100k+ publications × 30+ concepts each the explode creates millions of
+    # rows.  Filtering to the current window up front shrinks the working set to
+    # only the rows that will actually be used.
+    df_exploded_current = df_exploded[
+        pd.to_numeric(df_exploded["year"], errors="coerce") >= current_start
+    ]
+    current_window_ids = set(df_exploded_current["pub_id"].unique())
+
     df_pubs = publications_data[["id", "concepts"]].copy()
+    df_pubs = df_pubs[df_pubs["id"].isin(current_window_ids)]  # filter BEFORE explode
     df_pubs = df_pubs[df_pubs["concepts"].apply(lambda x: isinstance(x, list))]
     df_pubs = df_pubs.explode("concepts").dropna(subset=["concepts"])
 
@@ -47,14 +57,6 @@ def render_keyword_trends(
         (df_pubs["concept"].str.len() > 2) &
         (~df_pubs["concept"].isin(KEYWORD_STOPWORDS))
     ]
-
-    # Filter to publications within the current window using df_exploded year data,
-    # since the concepts DataFrame no longer carries a 'year' column.
-    df_exploded_current = df_exploded[
-        pd.to_numeric(df_exploded["year"], errors="coerce") >= current_start
-    ]
-    current_window_ids = set(df_exploded_current["pub_id"].unique())
-    df_pubs = df_pubs[df_pubs["id"].isin(current_window_ids)]
 
     for division in top20_divisions:
         tier_info  = FOR_TIERS.get(division, {})
