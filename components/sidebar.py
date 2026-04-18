@@ -11,8 +11,8 @@ IMPACT_METRICS_TABS = [
     ("🏢 Research Organisations", "research_organisations"),
     ("📋 Policy Documents", "policy_documents"),
     ("📰 Media Monitor", "media_monitor"),
-    ("🔬 Patents", "patents"),
-    ("💰 AURIN Fundings", "aurin_fundings"),
+    # ("🔬 Patents", "patents"),
+    # ("💰 AURIN Fundings", "aurin_fundings"),
 ]
 
 IMPACT_SPACE_TABS = [
