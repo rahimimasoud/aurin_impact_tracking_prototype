@@ -2,7 +2,7 @@
 Sidebar component: hierarchical navigation + modal config dialog.
 """
 from components.base_component import BaseComponent
-from components._constants import _ENV_DIMENSIONS, _ENV_GEMINI
+from components._constants import _ENV_DIMENSIONS, _ENV_OPENROUTER
 import streamlit as st
 
 IMPACT_METRICS_TABS = [
@@ -38,16 +38,16 @@ def _show_config_dialog():
             value=st.session_state.get('api_key_input', '')
         )
 
-    if _ENV_GEMINI:
-        st.success("✅ Gemini API key loaded from .env")
-        gemini_api_key_input = _ENV_GEMINI
+    if _ENV_OPENROUTER:
+        st.success("✅ OpenRouter API key loaded from .env")
+        openrouter_api_key_input = _ENV_OPENROUTER
     else:
-        gemini_api_key_input = st.text_input(
-            "Gemini API Key (optional)",
+        openrouter_api_key_input = st.text_input(
+            "OpenRouter API Key (optional)",
             type="password",
-            help="Enter your Google Gemini API key to enable AI summaries",
-            placeholder="Enter your Gemini API key here...",
-            value=st.session_state.get('gemini_api_key_input', '')
+            help="Enter your OpenRouter API key to enable AI summaries",
+            placeholder="Enter your OpenRouter API key here...",
+            value=st.session_state.get('openrouter_api_key_input', '')
         )
 
     with st.expander("📅 Date Range Filter"):
@@ -76,9 +76,9 @@ def _show_config_dialog():
             else:
                 st.session_state.api_key = api_key_input
                 st.session_state.api_key_input = api_key_input
-                if gemini_api_key_input:
-                    st.session_state.gemini_api_key = gemini_api_key_input
-                    st.session_state.gemini_api_key_input = gemini_api_key_input
+                if openrouter_api_key_input:
+                    st.session_state.openrouter_api_key = openrouter_api_key_input
+                    st.session_state.openrouter_api_key_input = openrouter_api_key_input
                 st.session_state.refresh_requested = True
                 st.session_state.show_config = False
                 st.rerun()
@@ -86,8 +86,8 @@ def _show_config_dialog():
         if st.button("🗑️ Clear", width='stretch'):
             st.session_state.api_key = None
             st.session_state.api_key_input = ""
-            st.session_state.gemini_api_key = None
-            st.session_state.gemini_api_key_input = ""
+            st.session_state.openrouter_api_key = None
+            st.session_state.openrouter_api_key_input = ""
             st.session_state.show_config = False
             st.rerun()
 
@@ -103,8 +103,8 @@ class SidebarComponent(BaseComponent):
         defaults = {
             'api_key': None,
             'api_key_input': "",
-            'gemini_api_key': None,
-            'gemini_api_key_input': "",
+            'openrouter_api_key': None,
+            'openrouter_api_key_input': "",
             'from_date': None,
             'to_date': None,
             'active_tab': 'ai_summary',
@@ -154,8 +154,8 @@ class SidebarComponent(BaseComponent):
 
         if st.session_state.get('api_key'):
             st.sidebar.success("✅ Dimensions API key active")
-        if st.session_state.get('gemini_api_key'):
-            st.sidebar.success("✅ Gemini API key active")
+        if st.session_state.get('openrouter_api_key'):
+            st.sidebar.success("✅ OpenRouter API key active")
 
     def get_active_tab(self) -> str:
         return st.session_state.get('active_tab', 'research_papers')
@@ -163,8 +163,8 @@ class SidebarComponent(BaseComponent):
     def get_api_key(self) -> str:
         return st.session_state.get('api_key')
 
-    def get_gemini_api_key(self) -> str:
-        return st.session_state.get('gemini_api_key')
+    def get_openrouter_api_key(self) -> str:
+        return st.session_state.get('openrouter_api_key')
 
     def get_date_range(self) -> tuple:
         return (

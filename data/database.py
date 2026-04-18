@@ -42,6 +42,7 @@ JSON_COLUMNS: Dict[str, List[str]] = {
     "grant_trend":              ["funder_org_countries", "category_for"],
     "research_trend_exploded":  [],
     "media_mentions":           [],
+    "web_policy_documents":     [],
 }
 
 _SCHEMA_SQL = """

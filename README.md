@@ -7,7 +7,7 @@ A Streamlit-based dashboard for tracking and visualizing the research impact of 
 This dashboard provides comprehensive insights into AURIN's research publications, including:
 - Key metrics and statistics
 - Top cited articles
-- Affiliated organizations and countries
+- Affiliated organisations and countries
 - Recent publications
 - Publication trends over time
 - Citation distribution
@@ -16,7 +16,7 @@ This dashboard provides comprehensive insights into AURIN's research publication
 
 - **Key Metrics**: Overview of total publications, citations, and collaboration statistics
 - **Top Cited Articles**: Display of the most impactful publications
-- **Affiliated Organizations**: Visualization of research collaborations
+- **Affiliated Organisations**: Visualization of research collaborations
 - **Affiliated Countries**: Geographic distribution of research partnerships
 - **Recent Papers**: Latest publications from the last 6 months
 - **Publication Trends**: Time-based analysis of research output
@@ -73,7 +73,7 @@ aurin_impact_tracking_prototype/
 │   ├── sidebar.py            # Sidebar with API key input
 │   ├── key_metrics.py        # Key metrics display
 │   ├── top_cited_articles.py # Top cited articles component
-│   ├── affiliated_organisations.py # Organization affiliations
+│   ├── affiliated_organisations.py # Organisation affiliations
 │   ├── affiliated_countries.py    # Country affiliations
 │   ├── recent_papers.py      # Recent publications component
 │   ├── papers_last_6_months.py # 6-month publication trends

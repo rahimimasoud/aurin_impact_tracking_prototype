@@ -29,14 +29,13 @@ class GeminiProvider(AIProvider):
             )
 
         try:
-            import google.generativeai as genai
+            from google import genai
         except ImportError:
             raise RuntimeError(
-                "google-generativeai is not installed. Run: uv add google-generativeai"
+                "google-genai is not installed. Run: uv add google-genai"
             )
 
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(_MODEL)
+        client = genai.Client(api_key=api_key)
         prompt = SUMMARY_PROMPT_TEMPLATE.format(context=context.to_text())
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model=_MODEL, contents=prompt)
         return response.text

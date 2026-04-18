@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 _ENV_DIMENSIONS: str = os.getenv('DIMENSIONS_API_KEY', '')
-_ENV_GEMINI: str = os.getenv('GEMINI_API_KEY', '')
+_ENV_OPENROUTER: str = os.getenv('OPENROUTER_API_KEY', '')
+_ENV_SERPAPI: str = os.getenv('SERPAPI_KEY', '')
 
 # ANZSRC 2020 FOR codes — urban research domain, structured by relevance tier
 FOR_TIERS: Dict[str, Dict] = {

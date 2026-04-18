@@ -10,7 +10,7 @@ import pandas as pd
 
 from components.base_component import BaseComponent
 from components.ai_summary.base import AIProvider, ImpactContext
-from components.ai_summary.gemini_provider import GeminiProvider
+from components.ai_providers.openrouter_provider import OpenRouterProvider
 
 
 class AISummaryComponent(BaseComponent):
@@ -35,7 +35,7 @@ class AISummaryComponent(BaseComponent):
         self.grants_data = grants_data
         self.date_from = date_from
         self.date_to = date_to
-        self.provider: AIProvider = provider or GeminiProvider()
+        self.provider: AIProvider = provider or OpenRouterProvider()
 
     def render(self) -> None:
         st.markdown("## AI-Generated Impact Summary")

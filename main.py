@@ -4,8 +4,8 @@ This file orchestrates all components and data loading.
 """
 import streamlit as st
 
-from components._constants import _ENV_DIMENSIONS, _ENV_GEMINI
-from data_loader import DimensionsDataLoader, PolicyDocumentsDataLoader, GrantsDataLoader, PatentsDataLoader, ResearchTrendMonitorDataLoader, GrantTrendMonitorDataLoader
+from components._constants import _ENV_DIMENSIONS, _ENV_OPENROUTER
+from data_loader import DimensionsDataLoader, PolicyDocumentsDataLoader, GrantsDataLoader, PatentsDataLoader, ResearchTrendMonitorDataLoader, GrantTrendMonitorDataLoader, WebPolicyDocumentsDataLoader
 from data.capture import DataCapture, CaptureError
 from data import AurinDatabase
 from components.sidebar import SidebarComponent
@@ -27,7 +27,7 @@ from components.research_trend import ResearchTrendMonitorComponent
 from components.grant_trend import GrantTrendMonitorComponent
 from components.media_monitor import MediaMonitorComponent
 from components.ai_summary import AISummaryComponent
-from components.ai_summary.gemini_provider import GeminiProvider
+from components.ai_providers.openrouter_provider import OpenRouterProvider
 
 # Page configuration
 st.set_page_config(
@@ -41,7 +41,7 @@ st.set_page_config(
 sidebar = SidebarComponent()
 header = HeaderComponent()
 st.session_state.api_key = _ENV_DIMENSIONS if _ENV_DIMENSIONS else None
-st.session_state.gemini_api_key = _ENV_GEMINI if _ENV_GEMINI else None
+st.session_state.openrouter_api_key = _ENV_OPENROUTER if _ENV_OPENROUTER else None
 
 # Sidebar: navigation + config
 sidebar.render()
@@ -51,7 +51,7 @@ header.render()
 
 # Retrieve credentials and active tab
 api_key = sidebar.get_api_key()
-gemini_api_key = sidebar.get_gemini_api_key()
+openrouter_api_key = sidebar.get_openrouter_api_key()
 from_date, to_date = sidebar.get_date_range()
 active_tab = sidebar.get_active_tab()
 
@@ -87,6 +87,7 @@ df_aurin_main, df_authors, df_affiliations, df_funders, df_investigators = data_
     from_date=from_date_str, to_date=to_date_str
 )
 df_policies = PolicyDocumentsDataLoader().load_data(from_date=from_date_str, to_date=to_date_str)
+df_web_policies = WebPolicyDocumentsDataLoader().load_data()
 df_patents = PatentsDataLoader().load_data(from_date=from_date_str, to_date=to_date_str)
 df_grants = GrantsDataLoader().load_data(from_date=from_date_str, to_date=to_date_str)
 # Media Monitor tab: works independently of Dimensions data
@@ -107,7 +108,7 @@ if has_data:
             grants_data=df_grants,
             date_from=from_date_str,
             date_to=to_date_str,
-            provider=GeminiProvider(api_key=gemini_api_key),
+            provider=OpenRouterProvider(api_key=openrouter_api_key),
         ).render()
 
     elif active_tab == "research_papers":
@@ -124,7 +125,7 @@ if has_data:
         AffiliatedCountriesComponent(affiliations_data=df_affiliations).render()
 
     elif active_tab == "policy_documents":
-        PolicyDocumentsComponent(data=df_policies).render()
+        PolicyDocumentsComponent(data=df_policies, web_data=df_web_policies).render()
 
     elif active_tab == "patents":
         PatentsComponent(data=df_patents).render()

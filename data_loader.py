@@ -121,6 +121,18 @@ class PolicyDocumentsDataLoader:
         return _load_policy_documents(from_date, to_date)
 
 
+@st.cache_data
+def _load_web_policy_documents() -> pd.DataFrame:
+    return AurinDatabase().read_table("web_policy_documents")
+
+
+class WebPolicyDocumentsDataLoader:
+    """Reads web-discovered policy documents from the local cache."""
+
+    def load_data(self, **kwargs) -> pd.DataFrame:
+        return _load_web_policy_documents()
+
+
 class GrantsDataLoader:
     """Reads grants from the local cache."""
 
