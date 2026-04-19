@@ -15,6 +15,7 @@ Reads OPENROUTER_API_KEY and SERPAPI_KEY from .env if not passed directly.
 Default search engine: SerpAPI when SERPAPI_KEY is set, else DuckDuckGo.
 """
 import argparse
+import concurrent.futures
 import io
 import json
 import os
@@ -65,20 +66,36 @@ def _response_is_pdf(response: requests.Response) -> bool:
     return "pdf" in response.headers.get("Content-Type", "").lower()
 
 
-def fetch_pdf_text(url: str) -> str | None:
-    try:
-        import pdfplumber
-        resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-        resp.raise_for_status()
-        if not (_response_is_pdf(resp)):
-            print(f"  [skip] not a PDF (Content-Type): {url}")
-            return None
-        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
-            pages = [p.extract_text() or "" for p in pdf.pages]
-        return "\n".join(pages)
-    except Exception as exc:
-        print(f"  [skip] fetch error for {url}: {exc}")
+_FETCH_TIMEOUT = 45   # total seconds per attempt (download + pdf parse)
+_FETCH_RETRIES = 3
+
+
+def _fetch_pdf_text_once(url: str) -> str | None:
+    import pdfplumber
+    resp = requests.get(url, timeout=(10, 30), headers={"User-Agent": "Mozilla/5.0"})
+    resp.raise_for_status()
+    if not (_response_is_pdf(resp)):
+        print(f"  [skip] not a PDF (Content-Type): {url}")
         return None
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        pages = [p.extract_text() or "" for p in pdf.pages]
+    return "\n".join(pages)
+
+
+def fetch_pdf_text(url: str) -> str | None:
+    for attempt in range(1, _FETCH_RETRIES + 1):
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(_fetch_pdf_text_once, url)
+                return future.result(timeout=_FETCH_TIMEOUT)
+        except concurrent.futures.TimeoutError:
+            print(f"  [timeout] attempt {attempt}/{_FETCH_RETRIES} timed out: {url}")
+        except Exception as exc:
+            print(f"  [error] attempt {attempt}/{_FETCH_RETRIES} failed: {exc}")
+        if attempt < _FETCH_RETRIES:
+            time.sleep(2)
+    print(f"  [skip] giving up after {_FETCH_RETRIES} attempts: {url}")
+    return None
 
 
 # ── Snippet extraction ───────────────────────────────────────────────────────
