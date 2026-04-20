@@ -65,8 +65,8 @@ def _response_is_pdf(response: requests.Response) -> bool:
     return "pdf" in response.headers.get("Content-Type", "").lower()
 
 
-_MAX_PDF_BYTES = 20 * 1024 * 1024   # 20 MB — skip larger PDFs before OOM
-_PDF_PARSE_TIMEOUT = 45             # seconds for pdfplumber parsing
+_MAX_PDF_BYTES = 10 * 1024 * 1024   # 10 MB — skip larger PDFs to avoid OOM
+_FETCH_TOTAL_TIMEOUT = 120            # seconds covering download + parse
 
 
 class _PDFTimeout(Exception):
@@ -80,15 +80,23 @@ def fetch_pdf_text(url: str) -> str | None:
     def _handler(signum, frame):
         raise _PDFTimeout()
 
+    old_handler = signal.signal(signal.SIGALRM, _handler)
+    signal.alarm(_FETCH_TOTAL_TIMEOUT)
     try:
+        # HEAD check: skip large files before downloading a single byte
+        try:
+            head = requests.head(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"}, allow_redirects=True)
+            cl = int(head.headers.get("Content-Length", 0))
+            if cl > _MAX_PDF_BYTES:
+                print(f"  [skip] PDF too large ({cl // 1_000_000} MB): {url}")
+                return None
+        except Exception:
+            pass  # HEAD unsupported — fall through to streaming GET
+
         with requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"}, stream=True) as resp:
             resp.raise_for_status()
             if not (_response_is_pdf(resp)):
                 print(f"  [skip] not a PDF (Content-Type): {url}")
-                return None
-            cl = int(resp.headers.get("Content-Length", 0))
-            if cl > _MAX_PDF_BYTES:
-                print(f"  [skip] PDF too large ({cl // 1_000_000} MB): {url}")
                 return None
             chunks, total = [], 0
             for chunk in resp.iter_content(chunk_size=65536):
@@ -99,21 +107,18 @@ def fetch_pdf_text(url: str) -> str | None:
                 chunks.append(chunk)
             content = b"".join(chunks)
 
-        old_handler = signal.signal(signal.SIGALRM, _handler)
-        signal.alarm(_PDF_PARSE_TIMEOUT)
-        try:
-            with pdfplumber.open(io.BytesIO(content)) as pdf:
-                pages = [p.extract_text() or "" for p in pdf.pages]
-            return "\n".join(pages)
-        except _PDFTimeout:
-            print(f"  [timeout] PDF parsing timed out, skipping: {url}")
-            return None
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            pages = [p.extract_text() or "" for p in pdf.pages]
+        return "\n".join(pages)
+    except _PDFTimeout:
+        print(f"  [timeout] fetch/parse timed out, skipping: {url}")
+        return None
     except Exception as exc:
         print(f"  [skip] fetch error for {url}: {exc}")
         return None
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 # ── Snippet extraction ───────────────────────────────────────────────────────
