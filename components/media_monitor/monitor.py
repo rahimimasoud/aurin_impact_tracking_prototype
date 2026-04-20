@@ -76,15 +76,15 @@ class MediaMonitorComponent(BaseComponent):
             return
 
         df_dated = df.dropna(subset=["published_at"]).copy()
-        df_dated["month"] = df_dated["published_at"].dt.to_period("M").dt.start_time
-        monthly = df_dated.groupby("month").size().reset_index(name="mentions")
+        df_dated["quarter"] = df_dated["published_at"].dt.to_period("Q").dt.start_time
+        monthly = df_dated.groupby("quarter").size().reset_index(name="mentions")
 
         fig = px.bar(
             monthly,
-            x="month",
+            x="quarter",
             y="mentions",
-            labels={"month": "Month", "mentions": "Mentions"},
-            title="Mentions Over Time (monthly)",
+            labels={"quarter": "Quarter", "mentions": "Mentions"},
+            title="Mentions Over Time (quarterly)",
             color_discrete_sequence=["#0068c9"],
         )
         fig.update_layout(margin=dict(t=40, b=20), height=280)

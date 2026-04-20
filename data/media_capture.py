@@ -35,11 +35,14 @@ _REQUEST_DELAY = 1.5
 
 
 def _monthly_windows(start_year: int = 2010) -> Generator[Tuple[str, str], None, None]:
-    """Yield (after, before) ISO date string pairs for each calendar month from start_year to today."""
+    """Yield (after, before) ISO date string pairs for each quarter from start_year to today."""
     today = date.today()
     cur = date(start_year, 1, 1)
     while cur <= today:
-        nxt = date(cur.year + 1, 1, 1) if cur.month == 12 else date(cur.year, cur.month + 1, 1)
+        month = cur.month + 3
+        year = cur.year + (month - 1) // 12
+        month = (month - 1) % 12 + 1
+        nxt = date(year, month, 1)
         before = min(nxt, today + timedelta(days=1))
         yield cur.strftime("%Y-%m-%d"), before.strftime("%Y-%m-%d")
         cur = nxt
@@ -98,7 +101,7 @@ class MediaCapture:
         step = 0
         all_rows: List[dict] = []
 
-        progress_callback(0.0, f"Starting media capture — {total_steps} queries across {len(windows)} months…")
+        progress_callback(0.0, f"Starting media capture — {total_steps} queries across {len(windows)} quarters…")
 
         for term in _SEARCH_TERMS:
             for after, before in windows:
