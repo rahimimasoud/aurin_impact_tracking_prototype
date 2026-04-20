@@ -38,7 +38,7 @@ class AISummaryComponent(BaseComponent):
         self.provider: AIProvider = provider or OpenRouterProvider()
 
     def render(self) -> None:
-        st.markdown("## AI-Generated Impact Summary")
+        st.markdown("## Executive Summary")
         st.caption(f"Powered by {type(self.provider).__name__.replace('Provider', '')}")
 
         if not self.validate_data():

@@ -2,6 +2,7 @@
 OpenRouter implementation of AIProvider using the OpenAI SDK against OpenRouter's
 OpenAI-compatible endpoint.
 """
+import re
 from openai import OpenAI
 from components.ai_summary.base import AIProvider, ImpactContext, SUMMARY_PROMPT_TEMPLATE
 
@@ -36,4 +37,8 @@ class OpenRouterProvider(AIProvider):
             messages=[{"role": "user", "content": prompt}],
             timeout=60,
         )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        content = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'\1', content)
+        content = re.sub(r'`([^`\n]+)`', r'\1', content)
+        content = content.replace('$', r'\$')
+        return content

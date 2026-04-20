@@ -258,16 +258,43 @@ class ImpactContext:
         return "\n".join(lines)
 
 
-SUMMARY_PROMPT_TEMPLATE = (
-    "You are an expert research impact analyst. "
-    "Based on the following data about AURIN (Australian Urban Research Infrastructure Network) research output, "
-    "write a concise two-paragraph impact summary suitable for an executive dashboard. "
-    "The first paragraph should highlight the breadth and scale of research output "
-    "(publications, citations, organisations, countries, research trends, and key Fields of Research and SDGs covered). "
-    "The second paragraph should focus on real-world impact — policy uptake, patents, and funding. "
-    "Use plain, professional language. Do not use bullet points or headings.\n\n"
-    "{context}"
-)
+SUMMARY_PROMPT_TEMPLATE = """\
+You are a senior research impact strategist preparing a board-level executive \
+summary for AURIN (Australian Urban Research Infrastructure Network).
+
+Based on the data below, write a structured executive summary with the \
+following five sections. Use a bold heading for each section followed by \
+one to three sentences of substantive, insight-driven prose. Do not use \
+bullet points within sections. Write in authoritative, strategic language \
+appropriate for a vice-chancellor, minister, or research board.
+
+**Research Output & Scale**
+Summarise the volume and trajectory of AURIN-linked research: total \
+publications, citation impact, growth trends, and the breadth of Fields of \
+Research and SDGs covered.
+
+**Organisational Reach & Collaboration**
+Describe the geographic and institutional spread — number of contributing \
+organisations, countries engaged, and what this signals about AURIN's \
+collaborative footprint.
+
+**Policy & Societal Impact**
+Assess the translation of research into policy: number of policy documents \
+citing AURIN research, key publishing bodies, and the countries where AURIN \
+is shaping evidence-based decision-making.
+
+**Funding & Research Investment**
+Summarise the grant landscape: total funding secured, top funders, and \
+whether funding momentum is growing or plateauing. Highlight any notable \
+concentration or diversification trends.
+
+**Strategic Observations**
+Identify two or three forward-looking observations: where AURIN is \
+punching above its weight, where gaps or risks exist, and what the data \
+signals for AURIN's positioning over the next three to five years.
+
+DATA:
+{context}"""
 
 
 class AIProvider(ABC):

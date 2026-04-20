@@ -4,6 +4,7 @@ Google Gemini implementation of AIProvider.
 Reads GEMINI_API_KEY from the environment (loaded via .env) and calls
 the gemini-2.5-flash model to produce the impact summary.
 """
+import re
 from components.ai_summary.base import AIProvider, ImpactContext, SUMMARY_PROMPT_TEMPLATE
 
 _MODEL = "gemini-2.5-flash"
@@ -38,4 +39,8 @@ class GeminiProvider(AIProvider):
         client = genai.Client(api_key=api_key)
         prompt = SUMMARY_PROMPT_TEMPLATE.format(context=context.to_text())
         response = client.models.generate_content(model=_MODEL, contents=prompt)
-        return response.text
+        content = response.text
+        content = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'\1', content)
+        content = re.sub(r'`([^`\n]+)`', r'\1', content)
+        content = content.replace('$', r'\$')
+        return content

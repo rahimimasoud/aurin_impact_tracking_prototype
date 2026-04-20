@@ -6,7 +6,7 @@ from components._constants import _ENV_DIMENSIONS, _ENV_OPENROUTER
 import streamlit as st
 
 IMPACT_METRICS_TABS = [
-    ("🤖 AI Summary", "ai_summary"),
+    ("🤖 Executive Summary", "ai_summary"),
     ("📄 Research Papers", "research_papers"),
     ("🏢 Research Organisations", "research_organisations"),
     ("📋 Policy Documents", "policy_documents"),

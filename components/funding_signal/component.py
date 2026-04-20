@@ -18,6 +18,7 @@ from openai import OpenAI
 
 from components.base_component import BaseComponent
 from components.grant_trend._helpers import explode_with_year, compute_momentum
+from components.tab_ai_tools import render_qa_only
 
 
 _SIGNAL_PROMPT = """\
@@ -91,8 +92,18 @@ class FundingSignalMonitorComponent(BaseComponent):
         df_exp["funding_usd"] = pd.to_numeric(
             df_exp["funding_usd"], errors="coerce"
         ).fillna(0)
-        
-        self._llm_signals(df_exp)
+
+        col_summary, col_qa = st.columns(2)
+        with col_summary:
+            self._llm_signals(df_exp)
+        with col_qa:
+            render_qa_only(
+                "funding_signal_monitor",
+                "Funding Signal Monitor",
+                self._build_context(df_exp, self.publications_data),
+                self.openrouter_api_key,
+                divider=False,
+            )
         st.divider()
 
 
@@ -279,6 +290,8 @@ class FundingSignalMonitorComponent(BaseComponent):
                     )
                     content = response.choices[0].message.content
                     content = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'\1', content)
+                    content = re.sub(r'`([^`\n]+)`', r'\1', content)
+                    content = content.replace('$', r'\$')
                     st.markdown(content)
                 except Exception as e:
                     st.error(f"Signal generation failed: {e}")

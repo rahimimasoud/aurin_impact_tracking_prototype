@@ -29,6 +29,19 @@ from components.media_monitor import MediaMonitorComponent
 from components.ai_summary import AISummaryComponent
 from components.ai_providers.openrouter_provider import OpenRouterProvider
 from components.funding_signal import FundingSignalMonitorComponent
+from components.tab_ai_tools import (
+    render_tab_ai_tools,
+    build_research_papers_context,
+    build_research_organisations_context,
+    build_policy_documents_context,
+    build_research_trend_context,
+    build_grant_trend_context,
+    _SUMMARY_PROMPT_RESEARCH_PAPERS,
+    _SUMMARY_PROMPT_RESEARCH_ORGANISATIONS,
+    _SUMMARY_PROMPT_POLICY_DOCUMENTS,
+    _SUMMARY_PROMPT_RESEARCH_TREND,
+    _SUMMARY_PROMPT_GRANT_TREND,
+)
 from components.pdf_export import (
     generate_research_papers_pdf,
     generate_research_organisations_pdf,
@@ -115,7 +128,7 @@ def _export_btn(label: str, pdf_bytes: bytes, filename: str) -> None:
 
 # Media Monitor tab: works independently of Dimensions data
 if active_tab == "media_monitor":
-    MediaMonitorComponent().render()
+    MediaMonitorComponent(openrouter_api_key=openrouter_api_key).render()
     st.stop()
 
 # Render the active section
@@ -141,6 +154,14 @@ if has_data:
             generate_research_papers_pdf(df_aurin_main, df_affiliations, from_date_str, to_date_str),
             "research_papers.pdf",
         )
+        render_tab_ai_tools(
+            "research_papers", "Research Papers",
+            build_research_papers_context(df_aurin_main, df_affiliations),
+            openrouter_api_key,
+            _SUMMARY_PROMPT_RESEARCH_PAPERS,
+            summary_button_label="Generate Summary",
+            summary_spinner="Summarising research papers...",
+        )
         KeyMetricsComponent(main_data=df_aurin_main, affiliations_data=df_affiliations).render()
         TrendsComponent(data=df_aurin_main).render()
         TopCitedArticlesComponent(data=df_aurin_main).render()
@@ -155,6 +176,14 @@ if has_data:
             generate_research_organisations_pdf(df_affiliations, from_date_str, to_date_str),
             "research_organisations.pdf",
         )
+        render_tab_ai_tools(
+            "research_organisations", "Research Organisations",
+            build_research_organisations_context(df_aurin_main, df_affiliations),
+            openrouter_api_key,
+            _SUMMARY_PROMPT_RESEARCH_ORGANISATIONS,
+            summary_button_label="Generate Summary",
+            summary_spinner="Summarising research organisations...",
+        )
         AffiliatedOrganisationsComponent(main_data=df_aurin_main, affiliations_data=df_affiliations).render()
         AffiliatedCountriesComponent(affiliations_data=df_affiliations).render()
 
@@ -163,6 +192,14 @@ if has_data:
             "📄 Export PDF",
             generate_policy_documents_pdf(df_policies, df_web_policies, from_date_str, to_date_str),
             "policy_documents.pdf",
+        )
+        render_tab_ai_tools(
+            "policy_documents", "Policy Documents",
+            build_policy_documents_context(df_policies, df_web_policies),
+            openrouter_api_key,
+            _SUMMARY_PROMPT_POLICY_DOCUMENTS,
+            summary_button_label="Generate Summary",
+            summary_spinner="Summarising policy documents...",
         )
         PolicyDocumentsComponent(data=df_policies, web_data=df_web_policies).render()
 
@@ -189,6 +226,14 @@ if has_data:
             generate_research_trend_pdf(df_trend_monitor),
             "research_trend_monitor.pdf",
         )
+        render_tab_ai_tools(
+            "research_trend_monitor", "Research Trend Monitor",
+            build_research_trend_context(df_trend_monitor),
+            openrouter_api_key,
+            _SUMMARY_PROMPT_RESEARCH_TREND,
+            summary_button_label="Generate Summary",
+            summary_spinner="Summarising research trends...",
+        )
         ResearchTrendMonitorComponent(publications_data=df_trend_monitor).render()
 
     elif active_tab == "grant_trend_monitor":
@@ -197,6 +242,14 @@ if has_data:
             "📄 Export PDF",
             generate_grant_trend_pdf(df_grant_trend_monitor),
             "grant_trend_monitor.pdf",
+        )
+        render_tab_ai_tools(
+            "grant_trend_monitor", "Grant Trend Monitor",
+            build_grant_trend_context(df_grant_trend_monitor),
+            openrouter_api_key,
+            _SUMMARY_PROMPT_GRANT_TREND,
+            summary_button_label="Generate Summary",
+            summary_spinner="Summarising grant trends...",
         )
         GrantTrendMonitorComponent(grants_data=df_grant_trend_monitor).render()
 

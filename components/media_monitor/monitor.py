@@ -1,11 +1,18 @@
 """
 Media Monitor component: displays AURIN media mentions fetched from Google News.
 """
+from typing import Optional
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 
 from components.base_component import BaseComponent
+from components.tab_ai_tools import (
+    render_tab_ai_tools,
+    build_media_monitor_context,
+    _SUMMARY_PROMPT_MEDIA_MONITOR,
+)
 from data import AurinDatabase, MediaCapture
 from data_loader import _load_media_mentions
 
@@ -13,11 +20,15 @@ from data_loader import _load_media_mentions
 class MediaMonitorComponent(BaseComponent):
     """Renders the Media Monitor tab: fetch, timeline, source breakdown, and mentions table."""
 
+    def __init__(self, openrouter_api_key: Optional[str] = None, **kwargs):
+        super().__init__(**kwargs)
+        self.openrouter_api_key = openrouter_api_key
+
     def render(self) -> None:
         st.markdown("## 📰 Media Monitor")
         st.caption("AURIN mentions sourced from Google News RSS.")
 
-        self._render_fetch_button()
+        # self._render_fetch_button()
 
         df = _load_media_mentions()
         self.set_data(df)
@@ -28,6 +39,15 @@ class MediaMonitorComponent(BaseComponent):
                 "Click **Fetch Latest Mentions** above to pull results from Google News."
             )
             return
+
+        render_tab_ai_tools(
+            "media_monitor", "Media Monitor",
+            build_media_monitor_context(df),
+            self.openrouter_api_key,
+            _SUMMARY_PROMPT_MEDIA_MONITOR,
+            summary_button_label="Generate Summary",
+            summary_spinner="Summarising media coverage...",
+        )
 
         self._render_summary(df)
         self._render_timeline(df)
