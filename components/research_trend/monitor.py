@@ -92,20 +92,20 @@ class ResearchTrendMonitorComponent(BaseComponent):
         st.divider()
 
         core_df = momentum_df.head(20).reset_index(drop=True)
-        top20_divisions = core_df["for_division"].tolist() if not core_df.empty else []
+        # top20_divisions = core_df["for_division"].tolist() if not core_df.empty else []
 
-        # ── Section 3 ──────────────────────────────────────────────────
-        with st.expander("Emerging Keywords in Top Trending Fields", expanded=False):
-            if top20_divisions:
-                concept_counts_df = _load_concept_counts()
-                render_keyword_trends(
-                    df_exploded, concept_counts_df,
-                    top20_divisions, self._current_start,
-                )
-            else:
-                st.info("No FOR fields found in the dataset — keyword analysis skipped.")
+        # # ── Section 3 ──────────────────────────────────────────────────
+        # with st.expander("Emerging Keywords in Top Trending Fields", expanded=False):
+        #     if top20_divisions:
+        #         concept_counts_df = _load_concept_counts()
+        #         render_keyword_trends(
+        #             df_exploded, concept_counts_df,
+        #             top20_divisions, self._current_start,
+        #         )
+        #     else:
+        #         st.info("No FOR fields found in the dataset — keyword analysis skipped.")
 
-        st.divider()
+        # st.divider()
 
         # ── Section 4 ──────────────────────────────────────────────────
         if not core_df.empty:
