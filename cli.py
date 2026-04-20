@@ -10,6 +10,8 @@ Examples:
     uv run cli.py --source dimensions --api-key <KEY>
     uv run cli.py --source media
     uv run cli.py --source policies --openrouter-key <KEY>
+    uv run cli.py --source research_trend --api-key <KEY>
+    uv run cli.py --source grant_trend --api-key <KEY>
     uv run cli.py --source all --from-date 2020-01-01 --to-date 2024-12-31
 """
 import argparse
@@ -45,9 +47,12 @@ def main() -> None:
     )
     parser.add_argument(
         "-s", "--source",
-        choices=["all", "dimensions", "media", "policies"],
+        choices=["all", "dimensions", "media", "policies", "research_trend", "grant_trend"],
         default="all",
-        help="Data source to capture: 'dimensions', 'media', 'policies', or 'all' (default: all)",
+        help=(
+            "Data source to capture: 'dimensions' (publications + policy docs + trends), "
+            "'media', 'policies', 'research_trend', 'grant_trend', or 'all' (default: all)"
+        ),
     )
     parser.add_argument(
         "-k", "--api-key",
@@ -93,8 +98,9 @@ def main() -> None:
 
     needs_dimensions = args.source in ("dimensions", "all")
     needs_policies = args.source in ("policies", "all")
+    needs_trend = args.source in ("research_trend", "grant_trend", "dimensions", "all")
 
-    if needs_dimensions and not args.api_key:
+    if needs_trend and not args.api_key:
         parser.error(
             "No API key supplied for Dimensions. Pass --api-key or set the DIMENSIONS_API_KEY environment variable."
         )
@@ -121,6 +127,27 @@ def main() -> None:
             sys.exit(2)
         except Exception as e:
             print(f"UNEXPECTED ERROR (dimensions): {e}", file=sys.stderr)
+            sys.exit(3)
+
+    if args.source in ("research_trend", "grant_trend"):
+        import dimcli as _dimcli
+        _dimcli.login(key=args.api_key, endpoint=args.endpoint)
+        _dsl = _dimcli.Dsl()
+        capture = DataCapture(
+            api_key=args.api_key,
+            from_date=args.from_date,
+            to_date=args.to_date,
+            endpoint=args.endpoint,
+        )
+        try:
+            if args.source == "research_trend":
+                capture._capture_research_trend(db, _dsl, _progress)
+                _progress(1.0, "Research trend capture complete.")
+            else:
+                capture._capture_grant_trend(db, _dsl, _progress)
+                _progress(1.0, "Grant trend capture complete.")
+        except Exception as e:
+            print(f"UNEXPECTED ERROR ({args.source}): {e}", file=sys.stderr)
             sys.exit(3)
 
     if args.source in ("media", "all"):
