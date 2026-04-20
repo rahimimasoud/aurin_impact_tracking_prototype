@@ -143,7 +143,7 @@ class FundingSignalMonitorComponent(BaseComponent):
             height=420, margin=dict(l=0, r=10, t=10, b=30),
             coloraxis_showscale=False, yaxis_title=None,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     def _card_fastest_growing(self, df: pd.DataFrame) -> None:
         st.subheader("Fastest-Growing Fields by Funding Dollars")
@@ -185,7 +185,7 @@ class FundingSignalMonitorComponent(BaseComponent):
             height=420, margin=dict(l=0, r=10, t=10, b=30),
             coloraxis_showscale=False, yaxis_title=None,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     def _card_avg_grant_size(self, df: pd.DataFrame) -> None:
         st.subheader("Largest Average Grant Size")
@@ -207,7 +207,7 @@ class FundingSignalMonitorComponent(BaseComponent):
             height=380, margin=dict(l=0, r=10, t=10, b=30),
             coloraxis_showscale=False, yaxis_title=None,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     def _card_funder_concentration(self, df: pd.DataFrame) -> None:
         st.subheader("Top Funders in Trending Fields")
@@ -255,7 +255,7 @@ class FundingSignalMonitorComponent(BaseComponent):
             height=380, margin=dict(l=0, r=10, t=10, b=30),
             coloraxis_showscale=False, yaxis_title=None,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     # ── LLM signals ────────────────────────────────────────────────────
 

@@ -66,26 +66,19 @@ def _load_patents(
     return AurinDatabase().read_table("patents")
 
 
-@st.cache_data
-def _load_research_trend_monitor() -> pd.DataFrame:
-    # Intentionally excludes 'concepts' — sections 1, 2, and 4 don't need it.
-    # Use _load_research_trend_concepts() to fetch concepts lazily for section 3.
-    return AurinDatabase().read_table(
-        "research_trend", columns=["id", "year", "category_for"]
-    )
-
-
-@st.cache_data
-def _load_research_trend_concepts() -> pd.DataFrame:
-    """Load only id + concepts from research_trend for the keyword-trends section."""
-    return AurinDatabase().read_table("research_trend", columns=["id", "concepts"])
-
 
 @st.cache_data
 def _load_research_trend_exploded() -> pd.DataFrame:
     """Load the pre-exploded research trend table (pub_id, year, for_name, for_division).
     Populated during data capture; empty if capture has not been run yet."""
     return AurinDatabase().read_table("research_trend_exploded")
+
+
+@st.cache_data
+def _load_concept_counts() -> pd.DataFrame:
+    """Load pre-aggregated (for_division, year, concept, count) table.
+    Populated during data capture; empty if capture has not been run yet."""
+    return AurinDatabase().read_table("concept_counts")
 
 @st.cache_data
 def _load_grant_trend_monitor() -> pd.DataFrame:
@@ -155,12 +148,6 @@ class PatentsDataLoader:
     ) -> pd.DataFrame:
         return _load_patents(from_date, to_date)
 
-
-class ResearchTrendMonitorDataLoader:
-    """Reads 10-year AU urban research publications from the local cache."""
-
-    def load_data(self, api_key: str = None, **kwargs) -> pd.DataFrame:
-        return _load_research_trend_monitor()
 
 
 class GrantTrendMonitorDataLoader:

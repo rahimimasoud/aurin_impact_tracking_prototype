@@ -600,16 +600,17 @@ def build_media_monitor_context(df: Optional[pd.DataFrame]) -> str:
     return "\n".join(lines)
 
 
-def build_research_trend_context(df: Optional[pd.DataFrame]) -> str:
-    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
-        return "No research trend data available."
+def build_research_trend_context() -> str:
     try:
-        from components.research_trend._helpers import explode_with_year, compute_momentum
-        df_exploded = explode_with_year(df)
+        from data.database import AurinDatabase
+        from components.research_trend._helpers import compute_momentum
+        df_exploded = AurinDatabase().read_table("research_trend_exploded")
         if df_exploded.empty:
-            return "No FOR classification data found in research trend dataset."
+            return "No research trend data available."
         now = datetime.datetime.now().year
         momentum_df = compute_momentum(df_exploded, now - 4, now - 8, now - 5)
+        if momentum_df.empty:
+            return "No FOR classification data found in research trend dataset."
         lines = [
             "RESEARCH TREND MONITOR",
             f"Current window: {now - 4}–{now - 1} | Prior window: {now - 8}–{now - 5}",
@@ -627,7 +628,7 @@ def build_research_trend_context(df: Optional[pd.DataFrame]) -> str:
             lines.append(f"  {row['display_name']}: {row['current_count']} publications")
         return "\n".join(lines)
     except Exception:
-        return f"Research trend data: {len(df)} records available."
+        return "Research trend data: unavailable."
 
 
 def build_grant_trend_context(df: Optional[pd.DataFrame]) -> str:

@@ -5,7 +5,7 @@ This file orchestrates all components and data loading.
 import streamlit as st
 
 from components._constants import _ENV_DIMENSIONS, _ENV_OPENROUTER
-from data_loader import DimensionsDataLoader, PolicyDocumentsDataLoader, GrantsDataLoader, PatentsDataLoader, ResearchTrendMonitorDataLoader, GrantTrendMonitorDataLoader, WebPolicyDocumentsDataLoader, FundingSignalDataLoader
+from data_loader import DimensionsDataLoader, PolicyDocumentsDataLoader, GrantsDataLoader, PatentsDataLoader, GrantTrendMonitorDataLoader, WebPolicyDocumentsDataLoader, FundingSignalDataLoader
 from data.capture import DataCapture, CaptureError
 from data import AurinDatabase
 from components.sidebar import SidebarComponent
@@ -122,7 +122,7 @@ def _export_btn(label: str, pdf_bytes: bytes, filename: str) -> None:
             data=pdf_bytes,
             file_name=filename,
             mime="application/pdf",
-            use_container_width=True,
+            width='stretch',
         )
 
 
@@ -220,21 +220,20 @@ if has_data:
         GrantsComponent(data=df_grants).render()
 
     elif active_tab == "research_trend_monitor":
-        df_trend_monitor = ResearchTrendMonitorDataLoader().load_data()
         _export_btn(
             "📄 Export PDF",
-            generate_research_trend_pdf(df_trend_monitor),
+            generate_research_trend_pdf(),
             "research_trend_monitor.pdf",
         )
         render_tab_ai_tools(
             "research_trend_monitor", "Research Trend Monitor",
-            build_research_trend_context(df_trend_monitor),
+            build_research_trend_context(),
             openrouter_api_key,
             _SUMMARY_PROMPT_RESEARCH_TREND,
             summary_button_label="Generate Summary",
             summary_spinner="Summarising research trends...",
         )
-        ResearchTrendMonitorComponent(publications_data=df_trend_monitor).render()
+        ResearchTrendMonitorComponent().render()
 
     elif active_tab == "grant_trend_monitor":
         df_grant_trend_monitor = GrantTrendMonitorDataLoader().load_data()

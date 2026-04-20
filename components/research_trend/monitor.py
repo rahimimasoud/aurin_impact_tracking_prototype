@@ -11,44 +11,35 @@ Sections:
   4. Signal-to-action          — rule-based recommended actions
 """
 import datetime
-from typing import Optional
 
 import pandas as pd
 import streamlit as st
 
 from components.base_component import BaseComponent
-from ._helpers import explode_with_year, compute_momentum
+from ._helpers import compute_momentum
 from .trending_cards import render_trending_cards
 from .top_categories import render_top_categories_by_volume
 from .keyword_trends import render_keyword_trends
 from .signal_to_action import render_signal_to_action
-from data_loader import (
-    _load_research_trend_monitor,
-    _load_research_trend_concepts,
-    _load_research_trend_exploded,
-)
+from data_loader import _load_concept_counts
 from ._constants import FOR_TIERS
 
 
 @st.cache_data
 def _cached_explode() -> pd.DataFrame:
-    """Load and explode the research trend DataFrame, cached across Streamlit reruns.
-
-    Fast path: reads the pre-exploded table built during data capture (flat strings,
-    no JSON deserialisation). Falls back to the original on-demand explosion if the
-    pre-exploded table does not yet exist (i.e. before the first re-capture).
-    """
-    df = _load_research_trend_exploded()
-    if not df.empty:
-        return df[df["for_division"].isin(FOR_TIERS)].reset_index(drop=True)
-    return explode_with_year(_load_research_trend_monitor())
+    """Load pre-exploded research trend rows filtered to tracked FOR tiers."""
+    from data.database import AurinDatabase
+    tiers_csv = ",".join(f"'{k}'" for k in FOR_TIERS.keys())
+    return AurinDatabase().read_table(
+        "research_trend_exploded",
+        where=f"for_division IN ({tiers_csv})",
+    ).reset_index(drop=True)
 
 
 class ResearchTrendMonitorComponent(BaseComponent):
 
-    def __init__(self, publications_data: Optional[pd.DataFrame]):
+    def __init__(self):
         super().__init__()
-        self.publications_data = publications_data
         now = datetime.datetime.now().year
         # Current window : last 3 years  (e.g. 2022–2025)
         # Prior window   : 3 years before (e.g. 2019–2021)
@@ -68,17 +59,6 @@ class ResearchTrendMonitorComponent(BaseComponent):
             f"Current window: {self._current_start}–{self._current_end} "
             f"| Prior window: {self._prior_start}–{self._prior_end}."
         )
-
-        data_empty = self.publications_data is None or (
-            isinstance(self.publications_data, pd.DataFrame)
-            and self.publications_data.empty
-        )
-        if data_empty:
-            st.warning(
-                "No data available for trend monitoring. "
-                "Please check your API connection."
-            )
-            return
 
         df_exploded = _cached_explode()
         if df_exploded.empty:
@@ -115,14 +95,15 @@ class ResearchTrendMonitorComponent(BaseComponent):
         top20_divisions = core_df["for_division"].tolist() if not core_df.empty else []
 
         # ── Section 3 ──────────────────────────────────────────────────
-        if top20_divisions:
-            concepts_df = _load_research_trend_concepts()
-            render_keyword_trends(
-                df_exploded, concepts_df,
-                top20_divisions, self._current_start,
-            )
-        else:
-            st.info("No FOR fields found in the dataset — keyword analysis skipped.")
+        with st.expander("Emerging Keywords in Top Trending Fields", expanded=False):
+            if top20_divisions:
+                concept_counts_df = _load_concept_counts()
+                render_keyword_trends(
+                    df_exploded, concept_counts_df,
+                    top20_divisions, self._current_start,
+                )
+            else:
+                st.info("No FOR fields found in the dataset — keyword analysis skipped.")
 
         st.divider()
 

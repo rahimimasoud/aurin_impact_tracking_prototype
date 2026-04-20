@@ -69,6 +69,52 @@ class CaptureError(Exception):
     """Raised when data capture fails with a user-actionable message."""
 
 
+def _preaggregate_concept_counts(
+    db: AurinDatabase,
+    df_expl: pd.DataFrame,
+    df_concepts: pd.DataFrame,
+) -> None:
+    """
+    Build the concept_counts table: (for_division, year, concept, count).
+
+    Receives in-memory DataFrames so no DB reads are needed here.
+    df_expl: research_trend_exploded shape (pub_id, year, for_division, ...)
+    df_concepts: shape (id, concepts) where concepts is a list of dicts/strings.
+    """
+    if df_expl.empty or df_concepts.empty:
+        return
+
+    df_concepts = df_concepts.rename(columns={"id": "pub_id"})
+    df_concepts = df_concepts[df_concepts["concepts"].apply(lambda x: isinstance(x, list))]
+
+    merged = df_expl[["pub_id", "year", "for_division"]].merge(df_concepts, on="pub_id", how="inner")
+    merged = merged.explode("concepts").dropna(subset=["concepts"])
+
+    def _concept_name(c) -> str:
+        if isinstance(c, dict):
+            return (c.get("concept") or c.get("name") or c.get("id") or "").strip().lower()
+        return c.strip().lower() if isinstance(c, str) else ""
+
+    merged["concept"] = merged["concepts"].apply(_concept_name)
+    merged = merged[merged["concept"].str.len() > 2]
+
+    counts = (
+        merged.groupby(["for_division", "year", "concept"], sort=False)
+        .size()
+        .reset_index(name="count")
+    )
+    # Keep only top-100 concepts per (for_division, year) to cap table size.
+    # The UI renders at most 20 concepts per division, so 100 is a safe margin.
+    counts = (
+        counts.sort_values("count", ascending=False)
+        .groupby(["for_division", "year"], sort=False)
+        .head(100)
+        .reset_index(drop=True)
+    )
+    db.write_dataframe(counts, "concept_counts")
+    db.create_index("concept_counts", "for_division")
+
+
 def build_query_with_dates(
     query: str,
     from_date: Optional[str] = None,
@@ -494,28 +540,35 @@ class DataCapture:
             if all_dfs
             else pd.DataFrame()
         )
-        if db.upsert_dataframe(df, "research_trend"):
-            total = len(db.read_table("research_trend"))
-            db.record_fetch("research_trend", TREND_FIXED, TREND_FIXED, total)
+        if df.empty:
+            progress_callback(1.0, "No research trend data fetched.")
+            return
 
-        progress_callback(1.0, "Pre-computing research trend index…")
-        df_raw = db.read_table("research_trend", columns=["id", "year", "category_for"])
-        if not df_raw.empty and "category_for" in df_raw.columns:
-            df_raw = df_raw[df_raw["category_for"].apply(lambda x: isinstance(x, list))]
-            df_expl = df_raw.explode("category_for").dropna(subset=["category_for"])
-            df_expl["for_name"] = df_expl["category_for"].apply(
-                lambda x: (x.get("name") or x.get("id") or "") if isinstance(x, dict)
-                else (x if isinstance(x, str) else "")
-            )
-            df_expl = df_expl[df_expl["for_name"] != ""]
-            df_expl["for_division"] = df_expl["for_name"].str.extract(r"^(\d{4})", expand=False)
-            df_expl = df_expl.dropna(subset=["for_division"])
-            df_expl = (
-                df_expl.rename(columns={"id": "pub_id"})
-                [["pub_id", "year", "for_name", "for_division"]]
-                .reset_index(drop=True)
-            )
-            db.write_dataframe(df_expl, "research_trend_exploded")
+        # ── Phase 1: explode category_for in-memory → research_trend_exploded ──
+        progress_callback(0.95, "Pre-computing research trend index…")
+        df_work = df[["id", "year", "category_for"]].copy()
+        df_work = df_work[df_work["category_for"].apply(lambda x: isinstance(x, list))]
+        df_expl = df_work.explode("category_for").dropna(subset=["category_for"])
+        df_expl["for_name"] = df_expl["category_for"].apply(
+            lambda x: (x.get("name") or x.get("id") or "") if isinstance(x, dict)
+            else (x if isinstance(x, str) else "")
+        )
+        df_expl = df_expl[df_expl["for_name"] != ""]
+        df_expl["for_division"] = df_expl["for_name"].str.extract(r"^(\d{4})", expand=False)
+        df_expl = df_expl.dropna(subset=["for_division"])
+        df_expl = (
+            df_expl.rename(columns={"id": "pub_id"})
+            [["pub_id", "year", "for_name", "for_division"]]
+            .reset_index(drop=True)
+        )
+        if db.write_dataframe(df_expl, "research_trend_exploded"):
+            db.create_index("research_trend_exploded", "for_division")
+            db.create_index("research_trend_exploded", "pub_id")
+            db.record_fetch("research_trend_exploded", TREND_FIXED, TREND_FIXED, len(df_expl))
+
+        # ── Phase 2: aggregate concept counts in-memory → concept_counts ────────
+        progress_callback(0.98, "Pre-computing keyword concept counts…")
+        _preaggregate_concept_counts(db, df_expl, df[["id", "concepts"]].copy())
 
     def _capture_grant_trend(
         self,

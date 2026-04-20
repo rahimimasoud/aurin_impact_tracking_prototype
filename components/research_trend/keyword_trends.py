@@ -3,8 +3,12 @@ Section 3 — Emerging Keywords in Top Trending Fields.
 
 Renders a tag-cloud of the most frequent research concepts
 for each of the top trending FOR fields.
+
+Uses the pre-aggregated concept_counts table (for_division, year, concept, count)
+built during data capture, avoiding the expensive per-session JSON deserialisation
+of ~200k raw concept blobs.
 """
-from typing import Dict, List
+from typing import List
 
 import pandas as pd
 import streamlit as st
@@ -14,49 +18,25 @@ from ._constants import FOR_TIERS, TIER_BADGE, KEYWORD_STOPWORDS
 
 def render_keyword_trends(
     df_exploded: pd.DataFrame,
-    publications_data: pd.DataFrame,
+    concept_counts_df: pd.DataFrame,
     top20_divisions: List[str],
     current_start: int,
 ) -> None:
-    st.subheader("Emerging Keywords in Top Trending Fields")
-    st.caption(
-        "Most frequent research concepts within the current window "
-        "for the top 20 trending FOR fields."
-    )
-
-    if publications_data is None or publications_data.empty:
-        st.warning("No data available for keyword analysis.")
+    if concept_counts_df is None or concept_counts_df.empty:
+        st.info(
+            "Keyword concept data not yet available. "
+            "Re-run data capture to generate the concept index."
+        )
         return
 
-    if "concepts" not in publications_data.columns:
-        st.info("Concept/keyword data is not available in this dataset.")
-        return
-
-    # Compute the current-window ID set FIRST so we can filter before exploding.
-    # Exploding all concepts for all publications is the primary OOM risk on cloud:
-    # with 100k+ publications × 30+ concepts each the explode creates millions of
-    # rows.  Filtering to the current window up front shrinks the working set to
-    # only the rows that will actually be used.
-    df_exploded_current = df_exploded[
-        pd.to_numeric(df_exploded["year"], errors="coerce") >= current_start
+    # Filter stopwords and trivially short concepts at load time (fast — no JSON)
+    df = concept_counts_df[
+        (concept_counts_df["concept"].str.len() > 2) &
+        (~concept_counts_df["concept"].isin(KEYWORD_STOPWORDS))
     ]
-    current_window_ids = set(df_exploded_current["pub_id"].unique())
 
-    df_pubs = publications_data[["id", "concepts"]].copy()
-    df_pubs = df_pubs[df_pubs["id"].isin(current_window_ids)]  # filter BEFORE explode
-    df_pubs = df_pubs[df_pubs["concepts"].apply(lambda x: isinstance(x, list))]
-    df_pubs = df_pubs.explode("concepts").dropna(subset=["concepts"])
-
-    def _concept_str(c) -> str:
-        if isinstance(c, dict):
-            return (c.get("concept") or c.get("name") or c.get("id") or "").strip().lower()
-        return c.strip().lower() if isinstance(c, str) else ""
-
-    df_pubs["concept"] = df_pubs["concepts"].apply(_concept_str)
-    df_pubs = df_pubs[
-        (df_pubs["concept"].str.len() > 2) &
-        (~df_pubs["concept"].isin(KEYWORD_STOPWORDS))
-    ]
+    # Narrow to current window years
+    df = df[pd.to_numeric(df["year"], errors="coerce") >= current_start]
 
     for division in top20_divisions:
         tier_info  = FOR_TIERS.get(division, {})
@@ -64,20 +44,19 @@ def render_keyword_trends(
         tier       = tier_info.get("tier", "Core")
         badge      = TIER_BADGE.get(tier, TIER_BADGE["Core"])
 
-        matching_ids = set(
-            df_exploded[df_exploded["for_division"] == division]["pub_id"].unique()
-        )
-        concept_counts: Dict[str, int] = (
-            df_pubs[df_pubs["id"].isin(matching_ids)]["concept"]
-            .value_counts()
-            .to_dict()
-        )
-
-        if not concept_counts:
+        division_df = df[df["for_division"] == division]
+        if division_df.empty:
             st.info(f"No concept data found for **{field_name}**.")
             continue
 
-        top_concepts = sorted(concept_counts.items(), key=lambda x: -x[1])[:20]
+        concept_counts = (
+            division_df.groupby("concept")["count"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(20)
+        )
+
+        top_concepts = list(concept_counts.items())
         max_freq = top_concepts[0][1]
         min_freq = top_concepts[-1][1]
 
