@@ -38,9 +38,9 @@ JSON_COLUMNS: Dict[str, List[str]] = {
     "policy_documents": ["publisher_org"],
     "grants":           ["funder_org_countries"],
     "patents":          ["assignees", "inventor_names"],
-    "research_trend":   ["category_for", "concepts"],
     "grant_trend":              ["funder_org_countries", "category_for"],
     "research_trend_exploded":  [],
+    "concept_counts":           [],
     "media_mentions":           [],
     "web_policy_documents":     [],
 }
@@ -75,7 +75,8 @@ def _deserialize_json_columns(df: pd.DataFrame, json_cols: List[str]) -> pd.Data
     for col in json_cols:
         if col not in df.columns:
             continue
-        df[col] = df[col].apply(lambda v: json.loads(v) if isinstance(v, str) else v)
+        vals = df[col].tolist()
+        df[col] = [json.loads(v) if isinstance(v, str) else v for v in vals]
     return df
 
 
@@ -116,6 +117,10 @@ class AurinDatabase:
     def _init_schema(self) -> None:
         with self._connect() as conn:
             conn.executescript(_SCHEMA_SQL)
+            conn.execute("DROP TABLE IF EXISTS research_trend")
+            conn.execute(
+                "DELETE FROM cache_metadata WHERE dataset_name = 'research_trend'"
+            )
 
     # ------------------------------------------------------------------
     # Cache metadata helpers
@@ -194,10 +199,29 @@ class AurinDatabase:
     # DataFrame I/O
     # ------------------------------------------------------------------
 
+    def create_index(
+        self,
+        table_name: str,
+        column: str,
+        unique: bool = False,
+    ) -> None:
+        """Create a SQLite index on a single column if it does not already exist."""
+        idx_name = f"idx_{table_name}_{column}"
+        unique_kw = "UNIQUE " if unique else ""
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    f'CREATE {unique_kw}INDEX IF NOT EXISTS [{idx_name}] '
+                    f'ON [{table_name}] ([{column}])'
+                )
+        except Exception:
+            pass
+
     def read_table(
         self,
         table_name: str,
         columns: Optional[List[str]] = None,
+        where: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Read a data table into a DataFrame, deserialising JSON columns.
@@ -208,11 +232,18 @@ class AurinDatabase:
             columns: Optional list of column names to SELECT. When None (default),
                      all columns are returned (SELECT *). Passing a subset avoids
                      loading and deserialising heavy JSON columns that are not needed.
+            where: Optional raw SQL WHERE clause (without the WHERE keyword) to
+                   filter rows at the database level, reducing data transferred to
+                   Python. Caller is responsible for safe values — do not pass
+                   user-supplied strings directly.
         """
         col_expr = ", ".join(f'"{c}"' for c in columns) if columns else "*"
+        sql = f"SELECT {col_expr} FROM [{table_name}]"
+        if where:
+            sql += f" WHERE {where}"
         try:
             with self._connect() as conn:
-                df = pd.read_sql(f"SELECT {col_expr} FROM [{table_name}]", conn)
+                df = pd.read_sql(sql, conn)
         except Exception:
             return pd.DataFrame()
 

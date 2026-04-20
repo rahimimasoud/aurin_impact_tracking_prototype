@@ -351,20 +351,21 @@ def generate_grants_pdf(
     return bytes(pdf.output())
 
 
-def generate_research_trend_pdf(
-    df_trend: Optional[pd.DataFrame],
-) -> bytes:
+def generate_research_trend_pdf() -> bytes:
+    from data.database import AurinDatabase
+    df_trend = AurinDatabase().read_table("research_trend_exploded")
+
     pdf = _new_pdf("Research Trend Monitor")
     _caption(pdf, None, None)
 
-    if df_trend is None or df_trend.empty:
+    if df_trend.empty:
         pdf.set_font("Helvetica", "I", 10)
         pdf.cell(0, 6, "No trend monitor data available.")
         pdf.ln()
         return bytes(pdf.output())
 
-    _section_title(pdf, "Research Trends")
-    _data_table(pdf, df_trend, list(df_trend.columns[:6]), max_rows=100)
+    _section_title(pdf, "Research Trends by FOR Division")
+    _data_table(pdf, df_trend, ["pub_id", "year", "for_name", "for_division"], max_rows=100)
 
     return bytes(pdf.output())
 

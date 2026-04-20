@@ -108,7 +108,7 @@ class MediaMonitorComponent(BaseComponent):
             color_discrete_sequence=["#0068c9"],
         )
         fig.update_layout(margin=dict(t=40, b=20), height=280)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     def _render_table(self, df: pd.DataFrame) -> None:
         st.markdown("### Mentions")
@@ -123,7 +123,7 @@ class MediaMonitorComponent(BaseComponent):
 
         st.dataframe(
             display,
-            use_container_width=True,
+            width='stretch',
             height=450,
             column_config={
                 "published_at": st.column_config.DateColumn("Date", width="small", format="DD MMM YYYY"),
@@ -164,4 +164,4 @@ class MediaMonitorComponent(BaseComponent):
             margin=dict(t=10, b=20),
             height=450,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
